@@ -1,730 +1,686 @@
-import os
+from __future__ import annotations
 
-# --- MUST be set BEFORE importing transformers/sentence_transformers ---
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
-os.environ["TRANSFORMERS_NO_TORCHVISION"] = "1"
-
-import re
-import json
 import base64
-from io import BytesIO
+from pathlib import Path
 
 import streamlit as st
-import numpy as np
-import faiss
-from groq import Groq
-from sentence_transformers import SentenceTransformer
-from pypdf import PdfReader
-from docx import Document
 
-# --- Firebase Integration ---
-# Make sure the firebase file is in the same directory
-import firebase_db_py as fdb
+from agent import run_aura
+from firebase_service import (
+    firebase_available,
+    login_user,
+    register_user,
+    send_login_notification,
+)
+from memory import ConversationMemory
+from rag import retrieve_context
+from security import sanitize_output, validate_user_input
 
-# ============================================================
-# Learning Accelerator – Adaptive AI Tutor
-# ============================================================
-
-APP_TITLE = "Learning Accelerator"
-APP_SUBTITLE = "Adaptive Academic Tutoring System"
-DEFAULT_MODEL = "openai/gpt-oss-20b"
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-MAX_FILE_MB = 10
-CHUNK_SIZE = 900
-CHUNK_OVERLAP = 120
-TOP_K = 5
+BASE_DIR = Path(__file__).resolve().parent
+ASSETS_DIR = BASE_DIR / "assets"
+AVATAR = ASSETS_DIR / "aura_avatar.svg"
+BACKGROUND = ASSETS_DIR / "abstract_blue_liquid.svg"
 
 st.set_page_config(
-    page_title=f"{APP_TITLE} | {APP_SUBTITLE}",
+    page_title="AuraAI — AI Career & Skills Navigator",
+    page_icon="✦",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# Firebase functions aliased
-fb_sign_up = fdb.sign_up
-fb_sign_in = fdb.sign_in
-save_document_record = fdb.save_document_record
-delete_document_record = fdb.delete_document_record
-get_user_documents = fdb.get_user_documents
+# -----------------------------------------------------------------------------
+# Session state
+# -----------------------------------------------------------------------------
+defaults = {
+    "authenticated": False,
+    "user": None,
+    "page": "Home",
+    "chat_open": False,
+    "messages": [],
+    "memory": ConversationMemory(max_turns=8),
+    "pending_approval": None,
+    "last_approval": None,
+}
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
-# ---------- Professional CSS (SaaS Design System) ----------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-html:has(.hero-main-title), body:has(.hero-main-title) {
-    overflow-y: auto !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-}
-html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #0f172a;
-}
-body:has(.hero-main-title) #root,
-body:has(.hero-main-title) .stApp,
-body:has(.hero-main-title) [data-testid="stAppViewContainer"], 
-body:has(.hero-main-title) .stAppViewContainer, 
-body:has(.hero-main-title) section.main,
-body:has(.hero-main-title) .stMain,
-body:has(.hero-main-title) [data-testid="stMain"] {
-    overflow-y: auto !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-}
-#root,
-.stApp,
-[data-testid="stAppViewContainer"], 
-.stAppViewContainer, 
-section.main,
-.stMain,
-[data-testid="stMain"] {
-    padding: 0px !important;
-    margin: 0px !important;
-    background-color: #f7fafe !important;
-    background-image: 
-        radial-gradient(at 15% 15%, #e8f2fe 0px, transparent 48%),
-        radial-gradient(at 88% 18%, #edf5ff 0px, transparent 45%),
-        radial-gradient(at 50% 90%, #eaf2fd 0px, transparent 55%) !important;
-}
-div.block-container,
-div[data-testid="stMainBlockContainer"],
-.stMainBlockContainer,
-div[class*="stMainBlockContainer"],
-div[class*="block-container"],
-div[class*="e15ve43o4"] {
-    padding-top: 0px !important;
-    padding-bottom: 0px !important;
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
-    margin-top: 0px !important;
-    margin-bottom: 0px !important;
-    max-width: 1280px !important;
-}
-body:has(.hero-main-title) div.block-container,
-body:has(.hero-main-title) div[data-testid="stMainBlockContainer"],
-body:has(.hero-main-title) .stMainBlockContainer,
-body:has(.hero-main-title) div[class*="stMainBlockContainer"],
-body:has(.hero-main-title) div[class*="block-container"],
-body:has(.hero-main-title) div[class*="e15ve43o4"] {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-}
-[data-testid="stToolbarActions"],
-[data-testid="stAppDeployButton"],
-[data-testid="stMainMenu"],
-[data-testid="stMainMenuButton"],
-.stDeployButton,
-div[data-testid="stDecoration"],
-div[data-testid="stStatusWidget"],
-#MainMenu {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0px !important;
-    min-height: 0px !important;
-    max-height: 0px !important;
-    padding: 0px !important;
-    margin: 0px !important;
-}
-header[data-testid="stHeader"],
-.stAppHeader,
-div[data-testid="stHeader"],
-header,
-div[data-testid="stToolbar"],
-.stAppToolbar {
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-    z-index: 9999999 !important;
-    height: 0px !important;
-    min-height: 0px !important;
-    overflow: visible !important;
-    pointer-events: none !important;
-}
-button[data-testid="stExpandSidebarButton"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 18px !important;
-    left: 18px !important;
-    background-color: #ffffff !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12) !important;
-    width: 38px !important;
-    height: 38px !important;
-    justify-content: center !important;
-    align-items: center !important;
-    z-index: 9999999 !important;
-    border: 1.5px solid #e2e8f0 !important;
-    color: #2563eb !important;
-    transition: all 0.2s ease !important;
-    cursor: pointer !important;
-}
-button[data-testid="stExpandSidebarButton"]:hover {
-    background-color: #eff6ff !important;
-    border-color: #bfdbfe !important;
-    transform: scale(1.06) !important;
-}
-button[data-testid="stExpandSidebarButton"] svg {
-    color: #2563eb !important;
-    fill: #2563eb !important;
-    width: 20px !important;
-    height: 20px !important;
-}
-body:has(.hero-main-title) section[data-testid="stSidebar"],
-body:has(.hero-main-title) button[data-testid="stExpandSidebarButton"],
-body:has(.hero-main-title) div[data-testid="collapsedControl"] {
-    display: none !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.brand-group) {
-    position: fixed !important;
-    top: 0px !important;
-    left: 0px !important;
-    right: 0px !important;
-    width: 100vw !important;
-    height: 56px !important;
-    background: #ffffff !important;
-    border-bottom: 1.5px solid #e2e8f0 !important;
-    border-radius: 0px !important;
-    padding: 0px 2.5rem !important;
-    margin: 0px !important;
-    z-index: 999999 !important;
-    display: flex !important;
-    align-items: center !important;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04) !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.brand-group) div[data-testid="stColumn"] {
-    display: flex !important;
-    align-items: center !important;
-}
-.brand-group { display: flex; align-items: center; gap: 10px; }
-.brand-logo-icon {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: #eff6ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.brand-title-main { font-size: 15.5px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em; }
-.brand-subtitle-main { font-size: 11px; color: #64748b; font-weight: 500; }
-.header-highlight-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb;
-    border-radius: 9999px; padding: 4px 14px; font-size: 11.5px; font-weight: 600;
-    letter-spacing: 0.01em; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.04);
-}
-.nav-switch-label {
-    font-size: 12px; color: #475569; font-weight: 500;
-    text-align: right; line-height: 32px; margin: 0; padding: 0;
-}
-div[data-testid="stHorizontalBlock"]:has(.brand-group) button {
-    background-color: #ffffff !important; border: 1.5px solid #2563eb !important;
-    color: #2563eb !important; border-radius: 9999px !important;
-    font-weight: 600 !important; font-size: 12px !important;
-    padding: 0 16px !important; height: 32px !important; line-height: 30px !important;
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05) !important;
-    transition: all 0.15s ease-in-out !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.brand-group) button:hover {
-    background-color: #eff6ff !important; border-color: #1d4ed8 !important; color: #1d4ed8 !important;
-}
-div[data-testid="stHorizontalBlock"]:has(.hero-main-title) {
-    margin-top: 66px !important; padding-top: 0px !important; align-items: flex-start !important;
-}
-.hero-left-wrapper { position: relative; width: 100%; height: calc(100vh - 80px); }
-.hero-main-title {
-    font-size: 38px !important; font-weight: 900 !important; line-height: 1.2 !important;
-    color: #0f172a !important; letter-spacing: -0.03em !important;
-    margin-bottom: 12px !important; margin-top: 0px !important;
-    position: relative; z-index: 10;
-}
-.hero-main-title .highlight-blue { color: #2563eb; }
-.hero-lead-desc {
-    font-size: 16px !important; color: #475569 !important; line-height: 1.5 !important;
-    margin-bottom: 24px !important; max-width: 480px !important;
-    position: relative; z-index: 10;
-}
-.feature-stack {
-    display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;
-    position: relative; z-index: 10;
-}
-.feature-card-item { display: flex; align-items: center; gap: 12px; }
-.feature-round-icon {
-    width: 36px; height: 36px; border-radius: 50%; background: #eff6ff;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.feature-title-txt { font-size: 15px; font-weight: 700; color: #0f172a; }
-.feature-desc-txt { font-size: 13px; color: #64748b; margin-top: 0px; }
-.student-hero-container {
-    width: 100%; position: absolute; bottom: -10px; left: 0; z-index: 1;
-    display: flex; align-items: flex-end; justify-content: center;
-}
-.student-hero-container img {
-    max-height: 480px; width: auto; max-width: 100%; object-fit: contain; display: block;
-}
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: #ffffff !important; border-radius: 16px !important;
-    border: 1px solid #e2e8f0 !important; padding: 12px 18px !important;
-    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.04) !important;
-}
-.auth-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
-.auth-avatar-icon {
-    width: 30px; height: 30px; border-radius: 50%; background: #eff6ff;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.auth-header-title { font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; line-height: 1.15; }
-.auth-header-desc { font-size: 11px; color: #64748b; margin-top: 0px; line-height: 1.2; }
-.form-section-title {
-    font-size: 11.5px; font-weight: 700; color: #0f172a;
-    letter-spacing: -0.01em; margin-top: 4px; margin-bottom: 1px;
-}
-div[data-testid="stTextInput"] { margin-bottom: 0px !important; }
-div[data-testid="stTextInput"] label p,
-div[data-testid="stSelectbox"] label p {
-    font-size: 11px !important; font-weight: 600 !important;
-    color: #334155 !important; margin-bottom: 1px !important;
-}
-div[data-testid="stTextInput"] input {
-    border-radius: 7px !important; border: 1.5px solid #e2e8f0 !important;
-    font-size: 12px !important; padding: 0.25rem 0.55rem !important;
-    background-color: #ffffff !important; color: #0f172a !important; height: 32px !important;
-    transition: all 0.15s ease-in-out !important;
-}
-div[data-testid="stTextInput"] input:focus {
-    border-color: #2563eb !important; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
-}
-div[data-baseweb="select"] > div {
-    border-radius: 7px !important; border: 1.5px solid #e2e8f0 !important;
-    background-color: #ffffff !important; min-height: 32px !important;
-    height: 32px !important; font-size: 12px !important;
-    transition: all 0.15s ease-in-out !important;
-}
-button[kind="primary"] {
-    background-color: #2563eb !important; border: 1px solid #2563eb !important;
-    color: #ffffff !important; font-weight: 600 !important; font-size: 13px !important;
-    border-radius: 8px !important; height: 35px !important;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2) !important;
-    transition: all 0.15s ease-in-out !important; margin-top: 3px !important;
-}
-button[kind="primary"]:hover { background-color: #1d4ed8 !important; border-color: #1d4ed8 !important; }
-button[kind="secondary"] {
-    background-color: #ffffff !important; border: 1.5px solid #e2e8f0 !important;
-    color: #334155 !important; font-weight: 500 !important; font-size: 11.5px !important;
-    border-radius: 7px !important; height: 32px !important;
-    transition: all 0.15s ease-in-out !important;
-}
-button[kind="secondary"]:hover { background-color: #f8fafc !important; border-color: #cbd5e1 !important; }
-div[data-testid="stChatMessage"] {
-    background-color: #ffffff !important; border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important; padding: 1rem 1.25rem !important;
-    margin-bottom: 0.85rem !important;
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03) !important;
-}
-.stat-card {
-    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 20px; display: flex; align-items: center; gap: 16px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-.stat-icon {
-    width: 48px; height: 48px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; font-size: 20px;
-}
-.stat-icon.blue { background: #e0f2fe; color: #0284c7; }
-.stat-icon.green { background: #dcfce7; color: #16a34a; }
-.stat-icon.purple { background: #f3e8ff; color: #9333ea; }
-.stat-icon.orange { background: #ffedd5; color: #ea580c; }
-.stat-title { font-size: 13px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
-.stat-value { font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1; }
-.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-.dash-title { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.2; }
-.dash-subtitle { font-size: 14px; color: #64748b; }
-.bell-icon {
-    width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e2e8f0;
-    display: flex; align-items: center; justify-content: center; color: #475569;
-}
-.profile-badge { display: flex; align-items: center; gap: 12px; }
-.profile-avatar {
-    width: 40px; height: 40px; border-radius: 50%; background: #2563eb; color: white;
-    font-weight: 700; display: flex; align-items: center; justify-content: center;
-}
-</style>
-""", unsafe_allow_html=True)
+def _asset_data_uri(path: Path) -> str:
+    """Return a safe data URI. Missing assets never crash the app."""
+    if not path.exists():
+        return ""
+    mime = "image/svg+xml" if path.suffix.lower() == ".svg" else "image/png"
+    data = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{data}"
 
-# ---------- Session state ----------
-def init_state():
-    defaults = {
-        "authenticated": False,
-        "auth_mode": "signup",
-        "current_page": "Dashboard",
-        "current_user": None,
-        "chat_sessions": {},
-        "current_chat_id": None,
-        "chunks": [],
-        "chunk_sources": [],
-        "faiss_index": None,
-        "embeddings_ready": False,
-        "quiz": [],
-        "quiz_answers": {},
-        "score_history": [],
-        "plan": "",
-        "model": DEFAULT_MODEL,
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
 
-init_state()
+AVATAR_URI = _asset_data_uri(AVATAR)
+BG_URI = _asset_data_uri(BACKGROUND)
 
-def get_hero_student_base64():
-    for fname in ["student_clean_opt.png", "student_clean.png", "hero_student.png"]:
-        path = os.path.join(os.path.dirname(__file__), "assets", fname)
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                return base64.b64encode(f.read()).decode("utf-8")
-    return ""
 
-def get_groq_key():
-    try:
-        if "GROQ_API_KEY" in st.secrets:
-            return st.secrets["GROQ_API_KEY"]
-    except Exception:
-        pass
-    return os.getenv("GROQ_API_KEY", "")
+def inject_css() -> None:
+    background_layer = (
+        f'url("{BG_URI}") center/cover fixed,' if BG_URI else ""
+    )
+    st.markdown(
+        f"""
+        <style>
+        :root {{
+            --navy: #06162d;
+            --navy2: #091d3a;
+            --blue: #2e8cff;
+            --blue2: #65baff;
+            --text: #f3f7ff;
+            --muted: #a9bddb;
+            --line: rgba(113, 183, 255, .22);
+            --glass: rgba(7, 24, 49, .70);
+        }}
 
-def get_client():
-    key = get_groq_key()
-    if not key:
-        return None
-    return Groq(api_key=key)
+        .stApp {{
+            background:
+                {background_layer}
+                radial-gradient(circle at 82% 40%, rgba(21, 91, 178, .24), transparent 34%),
+                radial-gradient(circle at 15% 75%, rgba(23, 91, 160, .12), transparent 30%),
+                linear-gradient(135deg, #020b1b 0%, #06162d 50%, #071a36 100%);
+            color: var(--text);
+        }}
 
-@st.cache_resource(show_spinner=False)
-def load_embedder():
-    try:
-        return SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
-    except Exception:
-        try:
-            return SentenceTransformer(EMBED_MODEL, local_files_only=True)
-        except Exception:
-            return SentenceTransformer(EMBED_MODEL)
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(46,140,255,.08), transparent 28%),
+                linear-gradient(180deg, rgba(1,8,20,.10), rgba(1,8,20,.30));
+            z-index: 0;
+        }}
 
-def extract_text(uploaded_file):
-    name = uploaded_file.name.lower()
-    raw = uploaded_file.getvalue()
-    if len(raw) > MAX_FILE_MB * 1024 * 1024:
-        raise ValueError(f"{uploaded_file.name} exceeds {MAX_FILE_MB} MB limit.")
-    if name.endswith(".pdf"):
-        reader = PdfReader(BytesIO(raw))
-        pages = []
-        for i, page in enumerate(reader.pages):
-            text = page.extract_text() or ""
-            if text.strip():
-                pages.append(f"[Page {i + 1}]\n{text}")
-        return "\n\n".join(pages)
-    if name.endswith(".docx"):
-        doc = Document(BytesIO(raw))
-        parts = [p.text for p in doc.paragraphs if p.text.strip()]
-        for table in doc.tables:
-            for row in table.rows:
-                parts.append(" | ".join(cell.text.strip() for cell in row.cells))
-        return "\n".join(parts)
-    if name.endswith(".txt") or name.endswith(".md"):
-        return raw.decode("utf-8", errors="ignore")
-    raise ValueError("Supported formats: PDF, DOCX, TXT, MD.")
+        .block-container {{
+            max-width: 1380px;
+            padding: 0 2.2rem 3rem;
+            position: relative;
+            z-index: 1;
+        }}
 
-def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return []
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = min(start + size, len(text))
-        if end < len(text):
-            boundary = max(
-                text.rfind(". ", start, end),
-                text.rfind("? ", start, end),
-                text.rfind("! ", start, end),
+        /* Hide Streamlit chrome for a website-like UI. */
+        #MainMenu, footer, header {{ visibility: hidden; }}
+        [data-testid="stSidebar"] {{ display: none; }}
+        [data-testid="stToolbar"] {{ display: none; }}
+
+        /* Top navigation */
+        .topbar {{
+            min-height: 88px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(120, 180, 255, .07);
+            margin: 0 -2.2rem 0;
+            padding: 0 3.6rem;
+            background: rgba(4, 16, 36, .66);
+            backdrop-filter: blur(18px);
+        }}
+        .brand {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            white-space: nowrap;
+        }}
+        .brand-mark {{
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            color: #55aaff;
+            font-size: 34px;
+            font-weight: 800;
+            line-height: 1;
+            text-shadow: 0 0 18px rgba(70,160,255,.65);
+        }}
+        .brand-name {{
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -.7px;
+        }}
+        .brand-name span {{ color: #55aaff; }}
+        .brand-divider {{
+            width: 1px;
+            height: 30px;
+            background: rgba(175,205,255,.35);
+            margin: 0 4px 0 2px;
+        }}
+        .brand-sub {{ color: #a9bde0; font-size: 17px; }}
+
+        /* Website navigation */
+        .site-nav {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0 14px;
+            border-radius: 11px;
+            color: #eaf3ff !important;
+            text-decoration: none !important;
+            font-size: 16px;
+            font-weight: 600;
+            transition: .2s ease;
+            white-space: nowrap;
+        }}
+        .site-nav:hover {{ background: rgba(52,129,232,.16); color: white !important; }}
+        .site-nav.active {{ background: rgba(52,129,232,.48); }}
+        .auth-link {{ border: 1px solid rgba(181,211,255,.65); }}
+        .register-link {{
+            background: linear-gradient(135deg,#2d83f4,#368cff);
+            border: 1px solid #4499ff;
+            box-shadow: 0 8px 28px rgba(38,129,245,.22);
+        }}
+
+        /* Hero */
+        .hero-wrap {{ padding: 62px 0 38px; }}
+        .hero-grid {{
+            display: grid;
+            grid-template-columns: 1.05fr .95fr;
+            gap: 48px;
+            align-items: center;
+        }}
+        .eyebrow {{
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 18px;
+            border: 1px solid #2c78db;
+            border-radius: 999px;
+            color: #67b9ff;
+            background: rgba(9,32,67,.38);
+            font-size: 16px;
+            font-weight: 600;
+        }}
+        .hero-title {{
+            margin: 26px 0 18px;
+            font-size: clamp(3.1rem, 6vw, 5.45rem);
+            line-height: .98;
+            letter-spacing: -3.6px;
+            font-weight: 850;
+        }}
+        .hero-title .gradient {{
+            background: linear-gradient(90deg,#2d9dff 0%,#6e8cff 52%,#c58aff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        .hero-copy-wrap {{ padding-top: 42px; }}
+        .hero-copy {{
+            max-width: 680px;
+            color: #b9c9e3;
+            font-size: 19px;
+            line-height: 1.7;
+        }}
+        .cta button {{
+            margin-top: 20px;
+            background: linear-gradient(135deg,#2d8df5,#3988f1) !important;
+            border: 0 !important;
+            color: white !important;
+            font-size: 18px !important;
+            font-weight: 750 !important;
+            border-radius: 18px !important;
+            padding: .85rem 1.55rem !important;
+            box-shadow: 0 14px 35px rgba(30,128,245,.24) !important;
+        }}
+
+        /* Aura panel */
+        .aura-stage {{
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }}
+        .aura-stage::before {{
+            content: "";
+            position: absolute;
+            width: 410px;
+            height: 410px;
+            border-radius: 50%;
+            border: 2px solid rgba(44,157,255,.72);
+            box-shadow: 0 0 45px rgba(44,157,255,.18), inset 0 0 55px rgba(44,157,255,.09);
+        }}
+        .aura-stage::after {{
+            content: "";
+            position: absolute;
+            width: 310px;
+            height: 310px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(35,130,255,.20), transparent 66%);
+            filter: blur(10px);
+        }}
+        .aura-img {{
+            position: relative;
+            z-index: 2;
+            width: min(430px, 92%);
+            max-height: 500px;
+            object-fit: contain;
+            filter: drop-shadow(0 20px 42px rgba(0,0,0,.45));
+        }}
+        .aura-bubble {{
+            position: absolute;
+            z-index: 4;
+            bottom: 18px;
+            right: 0;
+            width: 360px;
+            max-width: 88%;
+            border: 1px solid #2e8eff;
+            border-radius: 22px;
+            padding: 16px 22px;
+            background: rgba(9,34,68,.90);
+            box-shadow: 0 15px 35px rgba(0,0,0,.28);
+        }}
+        .aura-bubble b {{ font-size: 18px; }}
+        .aura-bubble span {{ display: block; color: #9dbbe1; margin-top: 5px; }}
+
+        /* Feature row */
+        .features {{
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            gap: 48px;
+            margin: 0 0 30px;
+        }}
+        .feature-icon {{
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(145deg,rgba(28,75,141,.58),rgba(11,31,64,.8));
+            border: 1px solid rgba(72,153,247,.12);
+            color: #59b9ff;
+            font-size: 28px;
+            margin-bottom: 13px;
+        }}
+        .feature h3 {{ margin: 0 0 7px; font-size: 18px; }}
+        .feature p {{ margin: 0; color: #9fb5d3; line-height: 1.5; font-size: 15px; }}
+
+        /* Content / auth / chat */
+        .glass {{
+            border: 1px solid var(--line);
+            background: var(--glass);
+            border-radius: 24px;
+            padding: 30px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 55px rgba(0,0,0,.22);
+        }}
+        .page-title {{ font-size: 40px; font-weight: 800; letter-spacing: -1px; margin: 48px 0 20px; }}
+        .approval {{
+            border: 1px solid #e3bd50;
+            border-radius: 18px;
+            padding: 18px;
+            background: rgba(94,73,15,.24);
+            margin: 15px 0;
+        }}
+        .chat-shell {{
+            max-width: 980px;
+            margin: 35px auto 0;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 20px;
+            background: rgba(4,16,34,.74);
+        }}
+        .auth-card {{ max-width: 600px; margin: 60px auto; }}
+        .small-muted {{ color: #9db6d0; }}
+
+        @media (max-width: 900px) {{
+            .topbar {{ padding: 0; }}
+            .brand-sub, .brand-divider {{ display: none; }}
+            .hero-grid {{ grid-template-columns: 1fr; }}
+            .hero-wrap {{ padding-top: 52px; }}
+            .aura-stage {{ min-height: 420px; }}
+            .features {{ grid-template-columns: repeat(2,1fr); gap: 28px; }}
+            .block-container {{ padding: 0 1rem 2rem; }}
+        }}
+        @media (max-width: 560px) {{
+            .brand-name {{ font-size: 23px; }}
+            .features {{ grid-template-columns: 1fr; }}
+            .hero-title {{ font-size: 3rem; }}
+            .aura-stage::before {{ width: 310px; height: 310px; }}
+            .aura-bubble {{ right: 0; }}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def go(page: str) -> None:
+    st.session_state.page = page
+    if page != "Home":
+        st.session_state.chat_open = False
+    st.rerun()
+
+
+def logout() -> None:
+    st.session_state.authenticated = False
+    st.session_state.user = None
+    st.session_state.messages = []
+    st.session_state.pending_approval = None
+    st.session_state.last_approval = None
+    st.session_state.memory = ConversationMemory(max_turns=8)
+    st.session_state.page = "Home"
+    st.session_state.chat_open = False
+    st.rerun()
+
+
+def render_nav() -> None:
+    cols = st.columns([3.6, 1.0, 1.0, 1.0, 0.78, 0.9], gap="small")
+    with cols[0]:
+        st.markdown(
+            """
+            <div class="brand">
+              <div class="brand-mark">✦</div>
+              <div class="brand-name">Aura<span>AI</span></div>
+              <div class="brand-divider"></div>
+              <div class="brand-sub">AI Career &amp; Skills Navigator</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    nav = [(1, "Home"), (2, "About"), (3, "Contact")]
+    for idx, label in nav:
+        with cols[idx]:
+            active = " active" if st.session_state.page == label else ""
+            st.markdown(
+                f'<a class="site-nav{active}" href="?page={label}">{label}</a>',
+                unsafe_allow_html=True,
             )
-            if boundary > start + int(size * 0.55):
-                end = boundary + 1
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        if end >= len(text):
-            break
-        start = max(end - overlap, start + 1)
-    return chunks
+    with cols[4]:
+        st.markdown('<a class="site-nav auth-link" href="?page=Login">Login</a>', unsafe_allow_html=True)
+    with cols[5]:
+        st.markdown('<a class="site-nav register-link" href="?page=Register">Register</a>', unsafe_allow_html=True)
 
-def build_index(files_uploaded):
-    all_chunks = []
-    sources = []
-    for file in files_uploaded:
-        text = extract_text(file)
-        chunks = chunk_text(text)
-        if not chunks:
-            continue
-        all_chunks.extend(chunks)
-        sources.extend([file.name] * len(chunks))
-        if st.session_state.current_user and "uid" in st.session_state.current_user:
-            save_document_record(
-                st.session_state.current_user["uid"], 
-                file.name, 
-                f"{len(file.getvalue()) / 1024:.1f} KB"
-            )
-    if not all_chunks:
-        raise ValueError("No readable text found in the uploaded documents.")
-    model = load_embedder()
-    vectors = model.encode(
-        all_chunks,
-        batch_size=32,
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-        show_progress_bar=False,
-    ).astype("float32")
-    index = faiss.IndexFlatIP(vectors.shape[1])
-    index.add(vectors)
-    st.session_state.chunks = all_chunks
-    st.session_state.chunk_sources = sources
-    st.session_state.faiss_index = index
-    st.session_state.embeddings_ready = True
-
-def retrieve(query, k=TOP_K):
-    if not st.session_state.embeddings_ready:
-        return []
-    model = load_embedder()
-    q = model.encode(
-        [query],
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-    ).astype("float32")
-    k = min(k, len(st.session_state.chunks))
-    scores, ids = st.session_state.faiss_index.search(q, k)
-    results = []
-    for score, idx in zip(scores[0], ids[0]):
-        if idx >= 0:
-            results.append({
-                "text": st.session_state.chunks[idx],
-                "source": st.session_state.chunk_sources[idx],
-                "score": float(score),
-            })
-    return results
-
-def run_planner_agent(topic, target_date, hours, level, style, selected_doc=None):
-    client = get_client()
-    if not client:
-        return "System notice: Groq API key is not configured."
-    context_str = ""
-    if st.session_state.embeddings_ready and st.session_state.chunks:
-        if selected_doc and selected_doc not in ["All Uploaded Documents", "Custom Subject / General Topic"]:
-            doc_chunks = [c for c, s in zip(st.session_state.chunks, st.session_state.chunk_sources) if s == selected_doc]
-            sample_chunks = doc_chunks[:8]
-            context_str = "\n\n".join([f"[{selected_doc}]\n{c}" for c in sample_chunks])
-        else:
-            contexts = retrieve(topic, k=6)
-            if contexts:
-                context_str = "\n\n".join([f"[{c['source']}]\n{c['text']}" for c in contexts])
-    student_name = st.session_state.current_user["name"] if st.session_state.current_user else "Student"
-    prompt = f"""
-You are the Curriculum Planner in this academic tutoring system.
-Create a detailed, objective, and structured study schedule for the candidate directly based on the provided course material/syllabus when available.
-
-Candidate: {student_name}
-Subject / Target Goal: {topic}
-Target Timeline: {target_date}
-Available Daily Commitment: {hours} hours
-Proficiency Level: {level}
-Preferred Learning Method: {style}
-
-Reference Course Document Content:
-{context_str if context_str else "No uploaded course documents selected. Formulate a structured study plan based on standard academic curriculum."}
-"""
-    res = client.chat.completions.create(
-        model=st.session_state.model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return res.choices[0].message.content
-
-def run_explainer_agent(user_question):
-    client = get_client()
-    if not client:
-        return "System notice: Groq API key is not configured."
-    contexts = retrieve(user_question, k=TOP_K)
-    context_str = ""
-    if contexts:
-        ctx_blocks = []
-        for i, c in enumerate(contexts, 1):
-            ctx_blocks.append(f"[Document Reference {i} | Source: {c['source']}]\n{c['text']}")
-        context_str = "\n\n".join(ctx_blocks)
-    system_prompt = "You are the Learning Accelerator's AI Assistant, designed to help students learn, understand concepts, and navigate their study materials."
-    user_prompt = f"Student Inquiry:\n{user_question}\n\nRetrieved Document Context:\n{context_str if context_str else 'No course materials indexed.'}"
-    res = client.chat.completions.create(
-        model=st.session_state.model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.2,
-    )
-    return res.choices[0].message.content
-
-def run_quiz_agent(topic_or_context, num_q=3):
-    client = get_client()
-    if not client:
-        return []
-    contexts = retrieve(topic_or_context, k=3)
-    ref_text = "\n".join([c["text"] for c in contexts]) if contexts else topic_or_context
-    prompt = f"""
-Generate an assessment of {num_q} multiple choice questions based on this study content:
-Content:
-{ref_text[:3000]}
-
-Return valid JSON with this exact schema:
-[
-  {{
-    "question": "Question text here?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "answer_index": 0,
-    "explanation": "Clear explanation of the correct choice."
-  }}
-]
-"""
-    res = client.chat.completions.create(
-        model=st.session_state.model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    text = res.choices[0].message.content
-    try:
-        match = re.search(r"\[.*\]", text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        return json.loads(text)
-    except Exception:
-        return []
-
-def run_progress_coach():
-    client = get_client()
-    if not client:
-        return "System notice: Groq API key is not configured."
-    history = st.session_state.score_history
-    student_name = st.session_state.current_user["name"] if st.session_state.current_user else "Student"
-    if not history:
-        return f"No assessment records exist for {student_name} in the current session."
-    prompt = f"Review candidate evaluation logs and provide diagnostic feedback:\n{json.dumps(history, indent=2)}"
-    res = client.chat.completions.create(
-        model=st.session_state.model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return res.choices[0].message.content
+    page = st.query_params.get("page")
+    if page in {"Home", "About", "Contact", "Login", "Register"} and page != st.session_state.page:
+        st.session_state.page = page
+        if page != "Home":
+            st.session_state.chat_open = False
+        st.rerun()
 
 
-# ============================================================
-# VIEW 1: AUTHENTICATION
-# ============================================================
-if not st.session_state.authenticated:
-    col_nav_brand, col_nav_pill, col_nav_switch = st.columns([1.5, 1.2, 1.3])
-    with col_nav_brand:
-        st.markdown(f"""
-        <div class="brand-group">
-            <div class="brand-logo-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="#2563eb">
-                    <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-                </svg>
+def home_page() -> None:
+    if st.session_state.authenticated and st.session_state.chat_open:
+        render_chat()
+        return
+
+    left, right = st.columns([1.08, 0.92], gap="large")
+    with left:
+        st.markdown('<div class="hero-copy-wrap">', unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="eyebrow">✦ &nbsp; Your AI Career Coach</div>
+            <div class="hero-title">Navigate your next move<br>with <span class="gradient">clarity.</span></div>
+            <div class="hero-copy">
+              AI Career &amp; Skills Navigator helps you identify skill gaps,
+              find free learning resources, and explore real-time job market
+              trends — all in one place.
             </div>
-            <div>
-                <div class="brand-title-main">{APP_TITLE}</div>
-                <div class="brand-subtitle-main">{APP_SUBTITLE}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="cta">', unsafe_allow_html=True)
+        if st.button("💬  Enter Aura   →", key="enter_aura", type="primary"):
+            if st.session_state.authenticated:
+                st.session_state.chat_open = True
+                st.rerun()
+            else:
+                st.session_state.page = "Login"
+                st.rerun()
+        st.markdown('</div></div>', unsafe_allow_html=True)
 
-    with col_nav_pill:
-        st.markdown("""
-        <div style="display:flex; justify-content:center; align-items:center; height:100%;">
-            <div class="header-highlight-pill">
-                <span>For a Brighter Academic Future</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_nav_switch:
-        if st.session_state.auth_mode == "signup":
-            col_sw_txt, col_sw_btn = st.columns([1.2, 1])
-            with col_sw_txt:
-                st.markdown('<div class="nav-switch-label">Already have an account?</div>', unsafe_allow_html=True)
-            with col_sw_btn:
-                if st.button("Sign In", key="top_signin_pill", use_container_width=True):
-                    st.session_state.auth_mode = "signin"
-                    st.rerun()
-        else:
-            col_sw_txt, col_sw_btn = st.columns([1.2, 1])
-            with col_sw_txt:
-                st.markdown('<div class="nav-switch-label">New student?</div>', unsafe_allow_html=True)
-            with col_sw_btn:
-                if st.button("Sign Up", key="top_signup_pill", use_container_width=True):
-                    st.session_state.auth_mode = "signup"
-                    st.rerun()
-
-    col_hero, col_card = st.columns([1.08, 1.28], gap="large")
-
-    with col_hero:
-        hero_b64 = get_hero_student_base64()
-        img_html = f'<img src="data:image/png;base64,{hero_b64}" alt="Student" />' if hero_b64 else ''
-        st.markdown(f"""
-<div class="hero-left-wrapper">
-<div class="hero-main-title">
-Learn Smarter<br>
-<span class="highlight-blue">Grow Faster</span>
-</div>
-<div class="hero-lead-desc">
-AI-powered academic tutoring system designed to help you achieve your goals securely with Firebase.
-</div>
-<div class="student-hero-container">
-{img_html}
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-    with col_card:
-        with st.container(border=True):
-            if st.session_state.auth_mode == "signup":
-                st.markdown("""
-                <div class="auth-card-header">
-                    <div class="auth-avatar-icon">
-                        <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="auth-header-title">Create Your Student Account</div>
-                        <div class="auth-header-desc">Register securely with Firebase backend.</div>
-                    </div>
+    with right:
+        avatar = AVATAR_URI
+        if avatar:
+            st.markdown(
+                f"""
+                <div class="aura-stage">
+                  <div class="aura-ring"></div>
+                  <img class="aura-img" src="{avatar}" alt="Aura AI career coach">
+                  <div class="aura-bubble"><b>✦ &nbsp; Hi, I'm Aura!</b><span>Your AI Career &amp; Skills Navigator</span></div>
                 </div>
-                <div class="form-section-title">Personal Information</div>
-                """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="aura-stage"><div class="aura-bubble"><b>✦ &nbsp; Hi, I\'m Aura!</b><span>Your AI Career &amp; Skills Navigator</span></div></div>',
+                unsafe_allow_html=True,
+            )
 
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    reg_name = st.text_input("Full Name", placeholder="Full Name", key="signup_name")
-                with col_c2:
-                    reg_id = st.text_input("Student ID", placeholder="Student ID", key="signup_id")
+    st.markdown(
+        """
+        <div class="features">
+          <div class="feature"><div class="feature-icon">◎</div><h3>Find Skill Gaps</h3><p>Discover what skills to build next.</p></div>
+          <div class="feature"><div class="feature-icon">▣</div><h3>Learn for Free</h3><p>Get curated free resources &amp; courses.</p></div>
+          <div class="feature"><div class="feature-icon">↗</div><h3>Market Trends</h3><p>Explore real-time job opportunities.</p></div>
+          <div class="feature"><div class="feature-icon">◈</div><h3>Build Your Future</h3><p>Get personalized career guidance.</p></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-                col_c3, col_c4 = st.columns(2)
-                with col_c3:
-                    dept_choices = [
-                        "Select Department",
-                        "Computer Science",
-                        "Software Engineering",
-                        "Artificial Intelligence & Data Science",
-                        "Information Technology",
-                        "Electrical Engineering",
-                        "Business Administration",
-                        "General Studies"
-                    ]
-                   
+
+def auth_page(register: bool) -> None:
+    title = "Create your Aura account" if register else "Welcome back"
+    subtitle = "Create your account to start your career journey with Aura." if register else "Sign in to continue with Aura."
+    st.markdown(
+        f'<div class="auth-card glass"><div class="page-title" style="margin-top:0">{title}</div><p class="small-muted">{subtitle}</p>',
+        unsafe_allow_html=True,
+    )
+    if not firebase_available():
+        st.warning("Firebase is not configured yet. Add your Firebase settings to Streamlit Secrets before using authentication.")
+
+    with st.form("auth_form"):
+        name = st.text_input("Name") if register else ""
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        confirm = st.text_input("Confirm password", type="password") if register else ""
+        fcm_token = st.text_input(
+            "Optional FCM registration token",
+            type="password",
+            help="Optional Firebase Cloud Messaging registration token.",
+        )
+        submitted = st.form_submit_button("Create account" if register else "Sign in", type="primary", use_container_width=True)
+
+    if submitted:
+        if not email or not password:
+            st.error("Email and password are required.")
+        elif register and password != confirm:
+            st.error("Passwords do not match.")
+        else:
+            try:
+                result = register_user(name, email, password, fcm_token) if register else login_user(email, password)
+                st.session_state.authenticated = True
+                st.session_state.user = result
+                st.session_state.page = "Home"
+                st.session_state.chat_open = False
+                if fcm_token and not register:
+                    send_login_notification(fcm_token, result.get("name") or "Aura user")
+                st.success("Authentication successful.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_chat() -> None:
+    st.markdown('<div class="chat-shell">', unsafe_allow_html=True)
+    left, right = st.columns([5, 1])
+    with left:
+        st.markdown("## ✦ Aura Chat")
+        st.caption("AI Career & Skills Navigator")
+    with right:
+        if st.button("Close", use_container_width=True):
+            st.session_state.chat_open = False
+            st.session_state.pending_approval = None
+            st.rerun()
+
+    for message in st.session_state.messages:
+        with st.chat_message(
+            message["role"],
+            avatar=AVATAR_URI if message["role"] == "assistant" and AVATAR_URI else None,
+        ):
+            st.markdown(message["content"])
+
+    pending = st.session_state.pending_approval
+    if pending:
+        st.markdown(
+            f"""
+            <div class="approval">
+              <b>Human approval checkpoint</b><br><br>
+              Aura identified this as a potentially consequential or preference-sensitive request.
+              Please confirm before proceeding.<br><br>
+              <b>Reason:</b> {pending['reason']}<br>
+              <b>Requested action:</b> {pending['action']}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        a, b = st.columns(2)
+        with a:
+            if st.button("✓ Approve and continue", type="primary", use_container_width=True):
+                st.session_state.last_approval = {"approved": True, **pending}
+                st.session_state.pending_approval = None
+                _execute_pending(pending)
+                st.rerun()
+        with b:
+            if st.button("✕ Reject / revise", use_container_width=True):
+                st.session_state.last_approval = {"approved": False, **pending}
+                st.session_state.pending_approval = None
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "No problem. I will not proceed with that action. Tell me how you would like to adjust the request.",
+                })
+                st.rerun()
+
+    prompt = st.chat_input("Ask Aura about your career, skills, learning plan, or market...")
+    st.markdown('</div>', unsafe_allow_html=True)
+    if prompt:
+        _handle_user_message(prompt)
+
+
+def _handle_user_message(prompt: str) -> None:
+    prompt = validate_user_input(prompt)
+    if not prompt:
+        return
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    decision = requires_approval(prompt)
+    if decision["required"]:
+        st.session_state.pending_approval = {
+            "query": prompt,
+            "reason": decision["reason"],
+            "action": decision["action"],
+        }
+        st.rerun()
+    _run_and_store(prompt, approved=False)
+    st.rerun()
+
+
+def _execute_pending(pending: dict) -> None:
+    _run_and_store(pending["query"], approved=True)
+
+
+def _run_and_store(prompt: str, approved: bool) -> None:
+    with st.spinner("Aura is working through the request..."):
+        try:
+            retrieved = retrieve_context(prompt, k=4)
+            result = run_aura(
+                user_query=prompt,
+                memory=st.session_state.memory,
+                retrieved_context=retrieved,
+                human_approved=approved,
+            )
+            safe = sanitize_output(result)
+            st.session_state.memory.add("user", prompt)
+            st.session_state.memory.add("assistant", safe)
+            st.session_state.messages.append({"role": "assistant", "content": safe})
+        except Exception as exc:
+            safe_error = sanitize_output(
+                "I couldn't complete that request. Please try again. "
+                f"Technical detail: {exc}"
+            )
+            st.session_state.messages.append({"role": "assistant", "content": safe_error})
+
+
+def requires_approval(prompt: str) -> dict:
+    text = prompt.lower().strip()
+    consequential = [
+        "should i quit", "should i resign", "should i leave my job",
+        "should i accept", "should i reject", "which career should i choose",
+        "which career should i pursue", "choose a career for me",
+        "tell me what career i should", "should i switch careers",
+        "should i change careers", "which certification should i take",
+        "should i spend", "should i pay", "should i relocate",
+        "should i move", "should i apply", "make the decision for me",
+    ]
+    preference_sensitive = [
+        "based on my situation", "based on my experience",
+        "personalized recommendation", "what should i do",
+        "what would you choose for me", "recommend one for me",
+        "which one is right for me",
+    ]
+    if any(p in text for p in consequential):
+        return {
+            "required": True,
+            "reason": "This request asks Aura to support a consequential personal career decision.",
+            "action": "Review the relevant options, trade-offs and evidence before Aura provides a personalized recommendation.",
+        }
+    if any(p in text for p in preference_sensitive):
+        return {
+            "required": True,
+            "reason": "This request depends on an important personal preference or situation.",
+            "action": "Use the conversation context to prepare a personalized comparison and practical next step.",
+        }
+    return {"required": False, "reason": "", "action": ""}
+
+
+def about_page() -> None:
+    st.markdown('<div class="page-title">About Aura</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="glass">
+        <b>Aura is a single-agent career and skills navigator.</b><br><br>
+        CrewAI provides agent orchestration. Groq provides the LLM. FAISS and
+        sentence-transformers provide RAG. Short-term memory preserves recent
+        conversation context. Four controlled external tools provide research,
+        public API data and arithmetic. A selective human-in-the-loop checkpoint
+        pauses consequential or preference-sensitive requests for explicit user approval.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="page-title" style="font-size:28px">Agent loop</div>', unsafe_allow_html=True)
+    st.code("GOAL → DECIDE → [HUMAN APPROVAL when needed] → ACT → OBSERVE → CONTINUE/COMPLETE → RETRY ONCE", language="text")
+    st.markdown('<div class="page-title" style="font-size:28px">Security controls</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="glass">Prompt-injection defense · system-prompt confidentiality · untrusted-tool-data handling · restricted HTTP hosts · safe arithmetic parsing · output sanitization · secret separation · human approval checkpoints.</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def contact_page() -> None:
+    st.markdown('<div class="page-title">Contact</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass"><b>Email</b><br><br>daniyalriazcute@gmail.com</div>', unsafe_allow_html=True)
+
+
+inject_css()
+render_nav()
+
+if st.session_state.page == "Home":
+    home_page()
+elif st.session_state.page == "About":
+    about_page()
+elif st.session_state.page == "Contact":
+    contact_page()
+elif st.session_state.page == "Login":
+    auth_page(register=False)
+elif st.session_state.page == "Register":
+    auth_page(register=True)

@@ -1,7 +1,11 @@
 import os
+
+# --- MUST be set BEFORE importing transformers/sentence_transformers ---
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+# This prevents transformers from trying to import vision modules that need torchvision
+os.environ["TRANSFORMERS_NO_TORCHVISION"] = "1"
 
 import re
 import json
@@ -17,11 +21,12 @@ from pypdf import PdfReader
 from docx import Document
 
 # --- Firebase Integration ---
-# Make sure firebase_db_py.py exists in the same directory
+# Ensure firebase_db_py.py is in the same directory
 import firebase_db_py as fdb
 
 # ============================================================
 # Learning Accelerator – Adaptive AI Tutor
+# Enterprise / Minimalist SaaS Architecture (with Firebase)
 # ============================================================
 
 APP_TITLE = "Learning Accelerator"
@@ -39,7 +44,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Firebase functions are now aliased for cleaner app.py code
+# Firebase functions are aliased for cleaner app.py code
 fb_sign_up = fdb.sign_up
 fb_sign_in = fdb.sign_in
 save_document_record = fdb.save_document_record
@@ -770,4 +775,14 @@ AI-powered academic tutoring system designed to help you achieve your goals secu
 
                 col_c3, col_c4 = st.columns(2)
                 with col_c3:
-                    dept_choices
+                    dept_choices = [
+                        "Select Department",
+                        "Computer Science",
+                        "Software Engineering",
+                        "Artificial Intelligence & Data Science",
+                        "Information Technology",
+                        "Electrical Engineering",
+                        "Business Administration",
+                        "General Studies"
+                    ]
+                    reg_dept = st.selectbox("Department", dept_choices, key

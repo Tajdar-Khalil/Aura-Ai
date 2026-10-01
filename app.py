@@ -371,7 +371,12 @@ def logout() -> None:
 
 
 def render_nav() -> None:
-    cols = st.columns([3.6, 1.0, 1.0, 1.0, 0.78, 0.9], gap="small")
+    # Adjust column layout based on auth state
+    if st.session_state.authenticated:
+        cols = st.columns([3.2, 0.9, 0.9, 0.9, 1.1, 0.9], gap="small")
+    else:
+        cols = st.columns([3.6, 1.0, 1.0, 1.0, 0.78, 0.9], gap="small")
+
     with cols[0]:
         st.markdown(
             """
@@ -393,11 +398,25 @@ def render_nav() -> None:
                 f'<a class="site-nav{active}" href="?page={label}">{label}</a>',
                 unsafe_allow_html=True,
             )
-    with cols[4]:
-        st.markdown('<a class="site-nav auth-link" href="?page=Login">Login</a>', unsafe_allow_html=True)
-    with cols[5]:
-        st.markdown('<a class="site-nav register-link" href="?page=Register">Register</a>', unsafe_allow_html=True)
 
+    if st.session_state.authenticated:
+        # Show Chat button + Logout when logged in
+        with cols[4]:
+            if st.button("💬 Chat", key="nav_chat", use_container_width=True):
+                st.session_state.chat_open = True
+                st.session_state.page = "Home"
+                st.rerun()
+        with cols[5]:
+            if st.button("Logout", key="nav_logout", use_container_width=True):
+                logout()
+    else:
+        # Show Login + Register when not logged in
+        with cols[4]:
+            st.markdown('<a class="site-nav auth-link" href="?page=Login">Login</a>', unsafe_allow_html=True)
+        with cols[5]:
+            st.markdown('<a class="site-nav register-link" href="?page=Register">Register</a>', unsafe_allow_html=True)
+
+    # Consume query-string navigation
     page = st.query_params.get("page")
     if page in {"Home", "About", "Contact", "Login", "Register"} and page != st.session_state.page:
         st.session_state.page = page
@@ -430,7 +449,8 @@ def home_page() -> None:
         if st.button("💬  Enter Aura   →", key="enter_aura", type="primary"):
             if st.session_state.authenticated:
                 st.session_state.chat_open = True
-                st.rerun()
+                st.session_state.page = "Home"
+                # No st.rerun() — Streamlit reruns automatically after button click
             else:
                 st.session_state.page = "Login"
                 st.rerun()
@@ -501,7 +521,7 @@ def auth_page(register: bool) -> None:
                 st.session_state.authenticated = True
                 st.session_state.user = result
                 st.session_state.page = "Home"
-                st.session_state.chat_open = False
+                st.session_state.chat_open = True
                 if fcm_token and not register:
                     send_login_notification(fcm_token, result.get("name") or "Aura user")
                 st.success("Authentication successful.")

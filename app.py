@@ -4,7 +4,6 @@ import os
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
-# This prevents transformers from trying to import vision modules that need torchvision
 os.environ["TRANSFORMERS_NO_TORCHVISION"] = "1"
 
 import re
@@ -21,12 +20,11 @@ from pypdf import PdfReader
 from docx import Document
 
 # --- Firebase Integration ---
-# Ensure firebase_db_py.py is in the same directory
+# Make sure the firebase file is in the same directory
 import firebase_db_py as fdb
 
 # ============================================================
 # Learning Accelerator – Adaptive AI Tutor
-# Enterprise / Minimalist SaaS Architecture (with Firebase)
 # ============================================================
 
 APP_TITLE = "Learning Accelerator"
@@ -44,14 +42,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Firebase functions are aliased for cleaner app.py code
+# Firebase functions aliased
 fb_sign_up = fdb.sign_up
 fb_sign_in = fdb.sign_in
 save_document_record = fdb.save_document_record
 delete_document_record = fdb.delete_document_record
 get_user_documents = fdb.get_user_documents
 
-# Professional Minimalist CSS (SaaS Design System)
+# ---------- Professional CSS (SaaS Design System) ----------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -67,7 +65,6 @@ html, body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #0f172a;
 }
-
 body:has(.hero-main-title) #root,
 body:has(.hero-main-title) .stApp,
 body:has(.hero-main-title) [data-testid="stAppViewContainer"], 
@@ -79,7 +76,6 @@ body:has(.hero-main-title) [data-testid="stMain"] {
     height: 100vh !important;
     max-height: 100vh !important;
 }
-
 #root,
 .stApp,
 [data-testid="stAppViewContainer"], 
@@ -95,7 +91,6 @@ section.main,
         radial-gradient(at 88% 18%, #edf5ff 0px, transparent 45%),
         radial-gradient(at 50% 90%, #eaf2fd 0px, transparent 55%) !important;
 }
-
 div.block-container,
 div[data-testid="stMainBlockContainer"],
 .stMainBlockContainer,
@@ -110,7 +105,6 @@ div[class*="e15ve43o4"] {
     margin-bottom: 0px !important;
     max-width: 1280px !important;
 }
-
 body:has(.hero-main-title) div.block-container,
 body:has(.hero-main-title) div[data-testid="stMainBlockContainer"],
 body:has(.hero-main-title) .stMainBlockContainer,
@@ -121,7 +115,6 @@ body:has(.hero-main-title) div[class*="e15ve43o4"] {
     max-height: 100vh !important;
     overflow-y: auto !important;
 }
-
 [data-testid="stToolbarActions"],
 [data-testid="stAppDeployButton"],
 [data-testid="stMainMenu"],
@@ -138,7 +131,6 @@ div[data-testid="stStatusWidget"],
     padding: 0px !important;
     margin: 0px !important;
 }
-
 header[data-testid="stHeader"],
 .stAppHeader,
 div[data-testid="stHeader"],
@@ -154,7 +146,6 @@ div[data-testid="stToolbar"],
     overflow: visible !important;
     pointer-events: none !important;
 }
-
 button[data-testid="stExpandSidebarButton"] {
     display: flex !important;
     visibility: visible !important;
@@ -176,26 +167,22 @@ button[data-testid="stExpandSidebarButton"] {
     transition: all 0.2s ease !important;
     cursor: pointer !important;
 }
-
 button[data-testid="stExpandSidebarButton"]:hover {
     background-color: #eff6ff !important;
     border-color: #bfdbfe !important;
     transform: scale(1.06) !important;
 }
-
 button[data-testid="stExpandSidebarButton"] svg {
     color: #2563eb !important;
     fill: #2563eb !important;
     width: 20px !important;
     height: 20px !important;
 }
-
 body:has(.hero-main-title) section[data-testid="stSidebar"],
 body:has(.hero-main-title) button[data-testid="stExpandSidebarButton"],
 body:has(.hero-main-title) div[data-testid="collapsedControl"] {
     display: none !important;
 }
-
 div[data-testid="stHorizontalBlock"]:has(.brand-group) {
     position: fixed !important;
     top: 0px !important;
@@ -213,12 +200,10 @@ div[data-testid="stHorizontalBlock"]:has(.brand-group) {
     align-items: center !important;
     box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04) !important;
 }
-
 div[data-testid="stHorizontalBlock"]:has(.brand-group) div[data-testid="stColumn"] {
     display: flex !important;
     align-items: center !important;
 }
-
 .brand-group { display: flex; align-items: center; gap: 10px; }
 .brand-logo-icon {
     width: 34px; height: 34px; border-radius: 9px;
@@ -226,19 +211,16 @@ div[data-testid="stHorizontalBlock"]:has(.brand-group) div[data-testid="stColumn
 }
 .brand-title-main { font-size: 15.5px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em; }
 .brand-subtitle-main { font-size: 11px; color: #64748b; font-weight: 500; }
-
 .header-highlight-pill {
     display: inline-flex; align-items: center; gap: 6px;
     background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb;
     border-radius: 9999px; padding: 4px 14px; font-size: 11.5px; font-weight: 600;
     letter-spacing: 0.01em; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.04);
 }
-
 .nav-switch-label {
     font-size: 12px; color: #475569; font-weight: 500;
     text-align: right; line-height: 32px; margin: 0; padding: 0;
 }
-
 div[data-testid="stHorizontalBlock"]:has(.brand-group) button {
     background-color: #ffffff !important; border: 1.5px solid #2563eb !important;
     color: #2563eb !important; border-radius: 9999px !important;
@@ -250,11 +232,9 @@ div[data-testid="stHorizontalBlock"]:has(.brand-group) button {
 div[data-testid="stHorizontalBlock"]:has(.brand-group) button:hover {
     background-color: #eff6ff !important; border-color: #1d4ed8 !important; color: #1d4ed8 !important;
 }
-
 div[data-testid="stHorizontalBlock"]:has(.hero-main-title) {
     margin-top: 66px !important; padding-top: 0px !important; align-items: flex-start !important;
 }
-
 .hero-left-wrapper { position: relative; width: 100%; height: calc(100vh - 80px); }
 .hero-main-title {
     font-size: 38px !important; font-weight: 900 !important; line-height: 1.2 !important;
@@ -268,7 +248,6 @@ div[data-testid="stHorizontalBlock"]:has(.hero-main-title) {
     margin-bottom: 24px !important; max-width: 480px !important;
     position: relative; z-index: 10;
 }
-
 .feature-stack {
     display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;
     position: relative; z-index: 10;
@@ -280,7 +259,6 @@ div[data-testid="stHorizontalBlock"]:has(.hero-main-title) {
 }
 .feature-title-txt { font-size: 15px; font-weight: 700; color: #0f172a; }
 .feature-desc-txt { font-size: 13px; color: #64748b; margin-top: 0px; }
-
 .student-hero-container {
     width: 100%; position: absolute; bottom: -10px; left: 0; z-index: 1;
     display: flex; align-items: flex-end; justify-content: center;
@@ -288,13 +266,11 @@ div[data-testid="stHorizontalBlock"]:has(.hero-main-title) {
 .student-hero-container img {
     max-height: 480px; width: auto; max-width: 100%; object-fit: contain; display: block;
 }
-
 div[data-testid="stVerticalBlockBorderWrapper"] {
     background: #ffffff !important; border-radius: 16px !important;
     border: 1px solid #e2e8f0 !important; padding: 12px 18px !important;
     box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.04) !important;
 }
-
 .auth-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
 .auth-avatar-icon {
     width: 30px; height: 30px; border-radius: 50%; background: #eff6ff;
@@ -302,12 +278,10 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 }
 .auth-header-title { font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; line-height: 1.15; }
 .auth-header-desc { font-size: 11px; color: #64748b; margin-top: 0px; line-height: 1.2; }
-
 .form-section-title {
     font-size: 11.5px; font-weight: 700; color: #0f172a;
     letter-spacing: -0.01em; margin-top: 4px; margin-bottom: 1px;
 }
-
 div[data-testid="stTextInput"] { margin-bottom: 0px !important; }
 div[data-testid="stTextInput"] label p,
 div[data-testid="stSelectbox"] label p {
@@ -323,14 +297,12 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stTextInput"] input:focus {
     border-color: #2563eb !important; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
 }
-
 div[data-baseweb="select"] > div {
     border-radius: 7px !important; border: 1.5px solid #e2e8f0 !important;
     background-color: #ffffff !important; min-height: 32px !important;
     height: 32px !important; font-size: 12px !important;
     transition: all 0.15s ease-in-out !important;
 }
-
 button[kind="primary"] {
     background-color: #2563eb !important; border: 1px solid #2563eb !important;
     color: #ffffff !important; font-weight: 600 !important; font-size: 13px !important;
@@ -339,7 +311,6 @@ button[kind="primary"] {
     transition: all 0.15s ease-in-out !important; margin-top: 3px !important;
 }
 button[kind="primary"]:hover { background-color: #1d4ed8 !important; border-color: #1d4ed8 !important; }
-
 button[kind="secondary"] {
     background-color: #ffffff !important; border: 1.5px solid #e2e8f0 !important;
     color: #334155 !important; font-weight: 500 !important; font-size: 11.5px !important;
@@ -347,14 +318,12 @@ button[kind="secondary"] {
     transition: all 0.15s ease-in-out !important;
 }
 button[kind="secondary"]:hover { background-color: #f8fafc !important; border-color: #cbd5e1 !important; }
-
 div[data-testid="stChatMessage"] {
     background-color: #ffffff !important; border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important; padding: 1rem 1.25rem !important;
     margin-bottom: 0.85rem !important;
     box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03) !important;
 }
-
 .stat-card {
     background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
     padding: 20px; display: flex; align-items: center; gap: 16px;
@@ -370,7 +339,6 @@ div[data-testid="stChatMessage"] {
 .stat-icon.orange { background: #ffedd5; color: #ea580c; }
 .stat-title { font-size: 13px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
 .stat-value { font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1; }
-
 .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
 .dash-title { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.2; }
 .dash-subtitle { font-size: 14px; color: #64748b; }
@@ -446,10 +414,8 @@ def load_embedder():
 def extract_text(uploaded_file):
     name = uploaded_file.name.lower()
     raw = uploaded_file.getvalue()
-
     if len(raw) > MAX_FILE_MB * 1024 * 1024:
         raise ValueError(f"{uploaded_file.name} exceeds {MAX_FILE_MB} MB limit.")
-
     if name.endswith(".pdf"):
         reader = PdfReader(BytesIO(raw))
         pages = []
@@ -458,7 +424,6 @@ def extract_text(uploaded_file):
             if text.strip():
                 pages.append(f"[Page {i + 1}]\n{text}")
         return "\n\n".join(pages)
-
     if name.endswith(".docx"):
         doc = Document(BytesIO(raw))
         parts = [p.text for p in doc.paragraphs if p.text.strip()]
@@ -466,17 +431,14 @@ def extract_text(uploaded_file):
             for row in table.rows:
                 parts.append(" | ".join(cell.text.strip() for cell in row.cells))
         return "\n".join(parts)
-
     if name.endswith(".txt") or name.endswith(".md"):
         return raw.decode("utf-8", errors="ignore")
-
     raise ValueError("Supported formats: PDF, DOCX, TXT, MD.")
 
 def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
-
     chunks = []
     start = 0
     while start < len(text):
@@ -489,21 +451,17 @@ def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
             )
             if boundary > start + int(size * 0.55):
                 end = boundary + 1
-
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
-
         if end >= len(text):
             break
         start = max(end - overlap, start + 1)
-
     return chunks
 
 def build_index(files_uploaded):
     all_chunks = []
     sources = []
-
     for file in files_uploaded:
         text = extract_text(file)
         chunks = chunk_text(text)
@@ -517,10 +475,8 @@ def build_index(files_uploaded):
                 file.name, 
                 f"{len(file.getvalue()) / 1024:.1f} KB"
             )
-
     if not all_chunks:
         raise ValueError("No readable text found in the uploaded documents.")
-
     model = load_embedder()
     vectors = model.encode(
         all_chunks,
@@ -529,10 +485,8 @@ def build_index(files_uploaded):
         convert_to_numpy=True,
         show_progress_bar=False,
     ).astype("float32")
-
     index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors)
-
     st.session_state.chunks = all_chunks
     st.session_state.chunk_sources = sources
     st.session_state.faiss_index = index
@@ -541,17 +495,14 @@ def build_index(files_uploaded):
 def retrieve(query, k=TOP_K):
     if not st.session_state.embeddings_ready:
         return []
-
     model = load_embedder()
     q = model.encode(
         [query],
         normalize_embeddings=True,
         convert_to_numpy=True,
     ).astype("float32")
-
     k = min(k, len(st.session_state.chunks))
     scores, ids = st.session_state.faiss_index.search(q, k)
-
     results = []
     for score, idx in zip(scores[0], ids[0]):
         if idx >= 0:
@@ -566,7 +517,6 @@ def run_planner_agent(topic, target_date, hours, level, style, selected_doc=None
     client = get_client()
     if not client:
         return "System notice: Groq API key is not configured."
-
     context_str = ""
     if st.session_state.embeddings_ready and st.session_state.chunks:
         if selected_doc and selected_doc not in ["All Uploaded Documents", "Custom Subject / General Topic"]:
@@ -577,7 +527,6 @@ def run_planner_agent(topic, target_date, hours, level, style, selected_doc=None
             contexts = retrieve(topic, k=6)
             if contexts:
                 context_str = "\n\n".join([f"[{c['source']}]\n{c['text']}" for c in contexts])
-
     student_name = st.session_state.current_user["name"] if st.session_state.current_user else "Student"
     prompt = f"""
 You are the Curriculum Planner in this academic tutoring system.
@@ -604,7 +553,6 @@ def run_explainer_agent(user_question):
     client = get_client()
     if not client:
         return "System notice: Groq API key is not configured."
-
     contexts = retrieve(user_question, k=TOP_K)
     context_str = ""
     if contexts:
@@ -612,10 +560,8 @@ def run_explainer_agent(user_question):
         for i, c in enumerate(contexts, 1):
             ctx_blocks.append(f"[Document Reference {i} | Source: {c['source']}]\n{c['text']}")
         context_str = "\n\n".join(ctx_blocks)
-
     system_prompt = "You are the Learning Accelerator's AI Assistant, designed to help students learn, understand concepts, and navigate their study materials."
     user_prompt = f"Student Inquiry:\n{user_question}\n\nRetrieved Document Context:\n{context_str if context_str else 'No course materials indexed.'}"
-
     res = client.chat.completions.create(
         model=st.session_state.model,
         messages=[
@@ -630,10 +576,8 @@ def run_quiz_agent(topic_or_context, num_q=3):
     client = get_client()
     if not client:
         return []
-
     contexts = retrieve(topic_or_context, k=3)
     ref_text = "\n".join([c["text"] for c in contexts]) if contexts else topic_or_context
-
     prompt = f"""
 Generate an assessment of {num_q} multiple choice questions based on this study content:
 Content:
@@ -667,12 +611,10 @@ def run_progress_coach():
     client = get_client()
     if not client:
         return "System notice: Groq API key is not configured."
-
     history = st.session_state.score_history
     student_name = st.session_state.current_user["name"] if st.session_state.current_user else "Student"
     if not history:
         return f"No assessment records exist for {student_name} in the current session."
-
     prompt = f"Review candidate evaluation logs and provide diagnostic feedback:\n{json.dumps(history, indent=2)}"
     res = client.chat.completions.create(
         model=st.session_state.model,
@@ -785,4 +727,4 @@ AI-powered academic tutoring system designed to help you achieve your goals secu
                         "Business Administration",
                         "General Studies"
                     ]
-                    reg_dept = st.selectbox("Department", dept_choices, key
+                   

@@ -1,12 +1,133 @@
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDOv6h1H6gbYn8RyYImq-m5OTjvLu9Edc4",
-  authDomain: "aura-c07ad.firebaseapp.com",
-  projectId: "aura-c07ad",
-  storageBucket: "aura-c07ad.firebasestorage.app",
-  messagingSenderId: "422030901114",
-  appId: "1:422030901114:web:c6b0eb3bf6b22d93b160c3"
-};
+import pyrebase
+import firebase_admin
+from firebase_admin import credentials, firestore
+import streamlit as st
+import json
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+# Your exact Firebase Web Configuration (from Firebase Console)
+firebase_config = {
+    "apiKey": "AIzaSyDOv6h1H6gbYn8RyYImq-m5OTjvLu9Edc4",
+    "authDomain": "aura-c07ad.firebaseapp.com",
+    "projectId": "aura-c07ad",
+    "storageBucket": "aura-c07ad.firebasestorage.app",
+    "messagingSenderId": "422030901114",
+    "appId": "1:422030901114:web:c6b0eb3bf6b22d93b160c3",
+    "databaseURL": ""
+}
+
+# Initialize Pyrebase for User Authentication (Signup / Login)
+try:
+    firebase = pyrebase.initialize_app(firebase_config)
+    auth = firebase.auth()
+except Exception as e:
+    auth = None
+
+# Initialize Firebase Admin for Firestore Database operations SECURELY
+if not firebase_admin._apps:
+    try:
+        # 1. Try to load from Streamlit Secrets (Best for Cloud Deployment)
+        if "firebase" in st.secrets:
+            cred_dict = dict(st.secrets["firebase"])
+            # If the private key was stored as a string, parse it back to a dict
+            if isinstance(cred_dict.get("private_key"), str):
+                cred_dict = json.loads(cred_dict["private_key"])
+            cred = credentials.Certificate(cred_dict)
+        # 2. Fallback to local JSON file (ONLY for local development)
+        else:
+            cred = credentials.Certificate("firebase_credentials.json")
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        print(f"Firebase Admin Initialization Error: {e}")
+
+# Safely initialize the database client
+db = firestore.client() if firebase_admin._apps else None
+
+
+# --- Core Database & Auth Functions ---
+
+def sign_up(email, password, name, student_id, department):
+    """Register a new student account using Firebase Auth and store profile in Firestore."""
+    if not auth:
+        return False, "Pyrebase auth not initialized."
+    try:
+        user = auth.create_user_with_email_and_password(email, password)
+        user_id = user['localId']
+        if db:
+            db.collection("users").document(user_id).set({
+                "uid": user_id,
+                "name": name,
+                "email": email,
+                "student_id": student_id,
+                "department": department
+            })
+        return True, user
+    except Exception as e:
+        return False, str(e)
+
+
+def sign_in(email, password):
+    """Authenticate existing student and fetch profile details from Firestore."""
+    if not auth:
+        return False, "Pyrebase auth not initialized."
+    try:
+        user = auth.sign_in_with_email_and_password(email, password)
+        user_id = user['localId']
+
+        name, student_id, department = "Student", "STU-2024-042", "Computer Science"
+        if db:
+            user_info = db.collection("users").document(user_id).get().to_dict()
+            if user_info:
+                name = user_info.get('name', 'Student')
+                student_id = user_info.get('student_id', 'STU-2024-042')
+                department = user_info.get('department', 'Computer Science')
+
+        return True, {
+            "localId": user_id,
+            "email": email,
+            "name": name,
+            "student_id": student_id,
+            "department": department
+        }
+    except Exception as e:
+        return False, "Invalid email or password"
+
+
+def save_document_record(uid, filename, file_size):
+    """Save uploaded document metadata to user's Firestore subcollection."""
+    if db:
+        try:
+            doc_ref = db.collection("users").document(uid).collection("documents").document()
+            doc_ref.set({
+                "id": doc_ref.id,
+                "filename": filename,
+                "size": file_size,
+                "upload_date": firestore.SERVER_TIMESTAMP
+            })
+        except Exception:
+            pass
+
+
+def delete_document_record(uid, doc_id):
+    """Delete a document record from Firestore."""
+    if db:
+        try:
+            db.collection("users").document(uid).collection("documents").document(doc_id).delete()
+        except Exception:
+            pass
+
+
+def get_user_documents(uid):
+    """Retrieve all uploaded document records for the specific user from Firestore."""
+    if db:
+        try:
+            docs_ref = (
+                db.collection("users")
+                .document(uid)
+                .collection("documents")
+                .order_by("upload_date", direction=firestore.Query.DESCENDING)
+                .stream()
+            )
+            return [{"id": d.id, **d.to_dict()} for d in docs_ref]
+        except Exception:
+            return []
+    return []

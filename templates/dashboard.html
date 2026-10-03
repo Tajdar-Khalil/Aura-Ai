@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat with Aura | AuraAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-row">
+      <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation" aria-expanded="false">☰</button>
+      <a class="brand" href="/">
+        <span class="brand-mark">✦</span>
+        <strong>Aura<span>AI</span></strong>
+        <span class="brand-divider"></span>
+        <span class="tagline">AI Career &amp; Skills Navigator</span>
+      </a>
+    </div>
+    <div class="header-tools">
+      <button class="icon-button notification" aria-label="Notifications">♧<i></i></button>
+      <button class="profile-button"><span class="profile-avatar">◉</span><span>Daniyal Riz</span><span class="chevron">⌄</span></button>
+    </div>
+  </header>
+
+  <div class="mobile-backdrop" id="backdrop"></div>
+  <div class="dashboard-shell">
+    <aside class="sidebar" id="sidebar">
+      <nav class="menu panel">
+        <button class="nav-button active" data-page="Chat with Aura"><span>⌂</span>Chat with Aura</button>
+        <button class="nav-button" data-page="Career Roadmap"><span>⌘</span>Career Roadmap</button>
+        <button class="nav-button" data-page="Skills"><span>◇</span>Skills</button>
+        <button class="nav-button" data-page="Opportunities"><span>▣</span>Opportunities</button>
+        <button class="nav-button" data-page="Resources"><span>▤</span>Resources</button>
+      </nav>
+
+      <section class="panel progress-card">
+        <h3>Your Progress</h3>
+        <div class="progress-row">
+          <div class="progress-ring"><span>68%</span></div>
+          <p>Career Growth<br>Journey</p>
+          <span class="arrow">›</span>
+        </div>
+      </section>
+
+      <section class="panel recent-card">
+        <h3>Recent Chats</h3>
+        <button class="recent-item" data-question="Show me the Web Application Security career path"><span>▣</span><b>Web Application Security Career Path<small>2 hours ago</small></b></button>
+        <button class="recent-item" data-question="Free learning resources for AppSec"><span>▣</span><b>Free Learning Resources for AppSec<small>5 hours ago</small></b></button>
+        <button class="recent-item" data-question="Should I pursue GRC or VAPT?"><span>▣</span><b>Should I pursue GRC or VAPT?<small>1 day ago</small></b></button>
+        <button class="recent-item" data-question="Show me a 90-day learning plan"><span>▣</span><b>90-Day Learning Plan<small>1 day ago</small></b></button>
+      </section>
+    </aside>
+
+    <main class="chat panel">
+      <div class="chat-header">
+        <div class="chat-title"><span class="brand-mark small">✦</span><div><h1 id="pageTitle">Chat with Aura</h1><p>Your AI Career Coach</p></div></div>
+        <span class="online"><i></i>Aura is online</span>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="message user-message">
+          <div class="message-avatar">◉</div>
+          <div class="bubble">What skills should I learn to become a Web Application Security Engineer?<time>10:24 AM ✓✓</time></div>
+        </div>
+
+        <div class="message aura-message">
+          <img class="message-avatar image-avatar" src="{{ url_for('assets', filename='aura_avatar.jpg') }}" alt="Aura">
+          <div class="bubble aura-bubble">
+            <p>Great question, Daniyal! Becoming a Web Application Security Engineer requires a mix of technical skills, hands-on practice, and continuous learning.</p>
+            <p>Here’s a structured breakdown to help you get started:</p>
+            <div class="answer-card">
+              <section><div class="section-icon blue">◈</div><div><h3>1. Core Security Skills</h3><ul><li>Web application security fundamentals</li><li>OWASP Top 10</li><li>Secure coding practices (HTML, JS, Python, PHP)</li><li>Authentication &amp; authorization (OAuth, JWT, SAML)</li><li>Input validation &amp; injection prevention</li></ul></div></section>
+              <section><div class="section-icon purple">›_</div><div><h3>2. Technical &amp; Tools</h3><ul><li>Burp Suite (web proxy &amp; scanner)</li><li>OWASP ZAP (open source scanner)</li><li>Nmap and Wireshark</li><li>Fuzzing tools</li></ul></div></section>
+              <section><div class="section-icon cyan">☁</div><div><h3>3. Supporting Knowledge</h3><ul><li>Linux administration</li><li>Networking (TCP/IP, DNS, HTTP/HTTPS)</li><li>Cloud security basics</li><li>Secure SDLC &amp; DevSecOps</li></ul></div></section>
+              <section><div class="section-icon violet">↗</div><div><h3>4. Career Growth &amp; Resources</h3><ul><li>Build a portfolio with practical projects</li><li>Get hands-on lab and internship experience</li><li>Consider relevant certifications</li><li>Stay current with security communities</li></ul></div></section>
+            </div>
+            <p>Would you like me to create a personalized 90-day learning roadmap?</p>
+            <time>10:24 AM</time>
+          </div>
+        </div>
+      </div>
+
+      <div class="chips">
+        <button class="chip" data-question="Show me a 90-day roadmap">Show me a 90-day roadmap</button>
+        <button class="chip" data-question="Free learning resources">Free learning resources</button>
+        <button class="chip" data-question="Compare AppSec vs GRC">Compare AppSec vs GRC</button>
+        <button class="chip" data-question="Help me with job applications">Help me with job applications</button>
+      </div>
+
+      <form class="composer" id="composer">
+        <button type="button" class="attach" aria-label="Attach file">⌕</button>
+        <input id="messageInput" autocomplete="off" placeholder="Type your message to Aura...">
+        <button class="send" type="submit" aria-label="Send message">➤</button>
+      </form>
+    </main>
+
+    <aside class="right-panel">
+      <section class="panel aura-card">
+        <div class="aura-photo-wrap"><img src="{{ url_for('assets', filename='aura_avatar.jpg') }}" alt="Aura"><span class="spark-badge">✦</span></div>
+        <h2>Aura <span>AI</span></h2>
+        <p class="role">Your Career Coach &amp; Guide</p>
+        <p class="tag">Smart guidance. Better decisions. A brighter future.</p>
+        <div class="facts">
+          <div><span>◈</span><b>Powered by GPT-OSS-120B<small>Advanced reasoning &amp; analysis</small></b></div>
+          <div><span>▣</span><b>RAG Knowledge Base<small>Curated career resources</small></b></div>
+          <div><span>♣</span><b>4 External Tools<small>Search · Wikipedia · API · Calculator</small></b></div>
+          <div><span>♧</span><b>Human-in-the-Loop<small>For important decisions &amp; preferences</small></b></div>
+        </div>
+      </section>
+
+      <section class="panel quick-card">
+        <h3>⚡ Quick Actions</h3>
+        <button data-question="Generate Career Roadmap">Generate Career Roadmap <span>›</span></button>
+        <button data-question="Analyze My Skills">Analyze My Skills <span>›</span></button>
+        <button data-question="Explore Job Opportunities">Explore Job Opportunities <span>›</span></button>
+        <button data-question="Find Learning Resources">Find Learning Resources <span>›</span></button>
+      </section>
+
+      <div class="quote">✦ <p>“Big dreams need a plan.<br>I'm here to help you build yours.”<small>— Aura</small></p></div>
+    </aside>
+  </div>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

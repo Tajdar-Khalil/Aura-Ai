@@ -209,15 +209,3 @@ def send_login_notification(fcm_token: str, display_name: str) -> bool:
         return True
     except Exception:
         return False
-
-
-def send_password_reset(email: str) -> bool:
-    """Request a Firebase password-reset email."""
-    address = str(email or "").strip()
-    if not address:
-        raise ValueError("Email is required.")
-    data = _auth_request(
-        "sendOobCode",
-        {"requestType": "PASSWORD_RESET", "email": address},
-    )
-    return bool(data.get("email") or data.get("kind") == "identitytoolkit#GetOobConfirmationCodeResponse")

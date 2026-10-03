@@ -1,738 +1,649 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import html
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
 
 from agent import run_aura
-from firebase_service import (
-    firebase_available,
-    login_user,
-    register_user,
-    send_login_notification,
-)
+from firebase_service import firebase_available, login_user, register_user, send_login_notification
 from memory import ConversationMemory
 from rag import retrieve_context
 from security import sanitize_output, validate_user_input
+from services.profile_service import get_profile, mark_complete, save_recent_chat, save_contact_message, set_goal
+from ui.styles import inject_styles
 
 BASE_DIR = Path(__file__).resolve().parent
-ASSETS_DIR = BASE_DIR / "assets"
+AVATAR = BASE_DIR / "assets" / "aura_avatar.jpg"
 
+st.set_page_config(page_title="AuraAI — AI Career & Skills Navigator", page_icon="✦", layout="wide", initial_sidebar_state="collapsed")
+inject_styles()
 
-def _first_existing(*paths: Path) -> Path:
-    """Return the first file that exists (assets/ folder or repo root)."""
-    for path in paths:
-        if path.exists():
-            return path
-    return paths[0]
-
-
-AVATAR = _first_existing(
-    ASSETS_DIR / "aura_avatar.jpg",
-    BASE_DIR / "aura_avatar.jpg",
-    ASSETS_DIR / "AI_Agent_Avatar.jpg",
-    BASE_DIR / "AI_Agent_Avatar.jpg",
-)
-BACKGROUND = _first_existing(
-    ASSETS_DIR / "abstract_blue_liquid.svg",
-    BASE_DIR / "abstract_blue_liquid.svg",
-)
-
-st.set_page_config(
-    page_title="AuraAI — AI Career & Skills Navigator",
-    page_icon="✦",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
-# -----------------------------------------------------------------------------
-# Session state
-# -----------------------------------------------------------------------------
-defaults = {
+DEFAULTS = {
     "authenticated": False,
     "user": None,
+    "profile": None,
     "page": "Home",
-    "chat_open": False,
+    "dashboard_page": "Chat with Aura",
     "messages": [],
     "memory": ConversationMemory(max_turns=8),
     "pending_approval": None,
-    "last_approval": None,
+    "auth_notice": "",
+    "auth_mode": "login",
+    "notifications_read": False,
 }
-for key, value in defaults.items():
+for key, value in DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
 
-def _asset_data_uri(path: Path) -> str:
-    """Return a safe data URI. Missing assets never crash the app."""
-    if not path.exists():
+
+
+def aura_data_uri() -> str:
+    if not AVATAR.exists():
         return ""
-    mime = {
-        ".svg": "image/svg+xml",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-    }.get(path.suffix.lower(), "image/png")
-    data = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime};base64,{data}"
+    return "data:image/jpeg;base64," + base64.b64encode(AVATAR.read_bytes()).decode("ascii")
+
+def initials(name: str) -> str:
+    parts = [p for p in name.strip().split() if p]
+    return "".join(p[0] for p in parts[:2]).upper() or "A"
 
 
-try:
-    from avatar_data import AVATAR_B64
-
-    AVATAR_URI = f"data:image/jpeg;base64,{AVATAR_B64}"
-except ImportError:
-    AVATAR_URI = _asset_data_uri(AVATAR)
-BG_URI = _asset_data_uri(BACKGROUND)
+def avatar_url(email: str, size: int = 64) -> str:
+    digest = hashlib.md5(email.strip().lower().encode()).hexdigest()
+    return f"https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}"
 
 
-def inject_css() -> None:
-    background_layer = (
-        f'url("{BG_URI}") center/cover fixed,' if BG_URI else ""
-    )
-    st.markdown(
-        f"""
-        <style>
-        :root {{
-            --navy: #06162d;
-            --navy2: #091d3a;
-            --blue: #2e8cff;
-            --blue2: #65baff;
-            --text: #f3f7ff;
-            --muted: #a9bddb;
-            --line: rgba(113, 183, 255, .22);
-            --glass: rgba(7, 24, 49, .70);
-        }}
-
-        .stApp {{
-            background:
-                {background_layer}
-                radial-gradient(circle at 82% 40%, rgba(21, 91, 178, .24), transparent 34%),
-                radial-gradient(circle at 15% 75%, rgba(23, 91, 160, .12), transparent 30%),
-                linear-gradient(135deg, #020b1b 0%, #06162d 50%, #071a36 100%);
-            color: var(--text);
-        }}
-
-        .stApp::before {{
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background:
-                radial-gradient(circle at 50% 0%, rgba(46,140,255,.08), transparent 28%),
-                linear-gradient(180deg, rgba(1,8,20,.10), rgba(1,8,20,.30));
-            z-index: 0;
-        }}
-
-        .block-container {{
-            max-width: 1380px;
-            padding: 0 2.2rem 3rem;
-            position: relative;
-            z-index: 1;
-        }}
-
-        #MainMenu, footer, header {{ visibility: hidden; }}
-        [data-testid="stSidebar"] {{ display: none; }}
-        [data-testid="stToolbar"] {{ display: none; }}
-
-        .topbar {{
-            min-height: 88px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(120, 180, 255, .07);
-            margin: 0 -2.2rem 0;
-            padding: 0 3.6rem;
-            background: rgba(4, 16, 36, .66);
-            backdrop-filter: blur(18px);
-        }}
-        .brand {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            white-space: nowrap;
-        }}
-        .brand-mark {{
-            width: 42px;
-            height: 42px;
-            display: grid;
-            place-items: center;
-            color: #55aaff;
-            font-size: 34px;
-            font-weight: 800;
-            line-height: 1;
-            text-shadow: 0 0 18px rgba(70,160,255,.65);
-        }}
-        .brand-name {{
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: -.7px;
-        }}
-        .brand-name span {{ color: #55aaff; }}
-        .brand-divider {{
-            width: 1px;
-            height: 30px;
-            background: rgba(175,205,255,.35);
-            margin: 0 4px 0 2px;
-        }}
-        .brand-sub {{ color: #a9bde0; font-size: 17px; }}
-
-        .site-nav {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 48px;
-            width: 100%;
-            box-sizing: border-box;
-            padding: 0 14px;
-            border-radius: 11px;
-            color: #eaf3ff !important;
-            text-decoration: none !important;
-            font-size: 16px;
-            font-weight: 600;
-            transition: .2s ease;
-            white-space: nowrap;
-        }}
-        .site-nav:hover {{ background: rgba(52,129,232,.16); color: white !important; }}
-        .site-nav.active {{ background: rgba(52,129,232,.48); }}
-        .auth-link {{ border: 1px solid rgba(181,211,255,.65); }}
-        .register-link {{
-            background: linear-gradient(135deg,#2d83f4,#368cff);
-            border: 1px solid #4499ff;
-            box-shadow: 0 8px 28px rgba(38,129,245,.22);
-        }}
-
-        [class*="st-key-nav"] button {{
-            width: 100%;
-            min-height: 48px;
-            border-radius: 11px !important;
-            background: transparent !important;
-            border: 1px solid transparent !important;
-            color: #eaf3ff !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-            white-space: nowrap;
-            box-shadow: none !important;
-            transition: .2s ease;
-        }}
-        [class*="st-key-nav"] button:hover {{
-            background: rgba(52,129,232,.16) !important;
-            color: white !important;
-        }}
-        [class*="st-key-navactive_"] button {{ background: rgba(52,129,232,.48) !important; }}
-        [class*="st-key-navauth_"] button {{ border: 1px solid rgba(181,211,255,.65) !important; }}
-        [class*="st-key-navreg_"] button {{
-            background: linear-gradient(135deg,#2d83f4,#368cff) !important;
-            border: 1px solid #4499ff !important;
-            box-shadow: 0 8px 28px rgba(38,129,245,.22) !important;
-        }}
-
-        .hero-wrap {{ padding: 62px 0 38px; }}
-        .hero-grid {{
-            display: grid;
-            grid-template-columns: 1.05fr .95fr;
-            gap: 48px;
-            align-items: center;
-        }}
-        .eyebrow {{
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            padding: 10px 18px;
-            border: 1px solid #2c78db;
-            border-radius: 999px;
-            color: #67b9ff;
-            background: rgba(9,32,67,.38);
-            font-size: 16px;
-            font-weight: 600;
-        }}
-        .hero-title {{
-            margin: 26px 0 18px;
-            font-size: clamp(3.1rem, 6vw, 5.45rem);
-            line-height: .98;
-            letter-spacing: -3.6px;
-            font-weight: 850;
-        }}
-        .hero-title .gradient {{
-            background: linear-gradient(90deg,#2d9dff 0%,#6e8cff 52%,#c58aff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-        .hero-copy-wrap {{ padding-top: 42px; }}
-        .hero-copy {{
-            max-width: 680px;
-            color: #b9c9e3;
-            font-size: 19px;
-            line-height: 1.7;
-        }}
-        .st-key-enter_aura button {{
-            margin-top: 20px;
-            background: linear-gradient(135deg,#2d8df5,#3988f1) !important;
-            border: 0 !important;
-            color: white !important;
-            font-size: 18px !important;
-            font-weight: 750 !important;
-            border-radius: 18px !important;
-            padding: .85rem 1.55rem !important;
-            box-shadow: 0 14px 35px rgba(30,128,245,.24) !important;
-        }}
-
-        .aura-stage {{
-            min-height: 500px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }}
-        .aura-stage::before {{
-            content: "";
-            position: absolute;
-            width: 410px;
-            height: 410px;
-            border-radius: 50%;
-            border: 2px solid rgba(44,157,255,.72);
-            box-shadow: 0 0 45px rgba(44,157,255,.18), inset 0 0 55px rgba(44,157,255,.09);
-        }}
-        .aura-stage::after {{
-            content: "";
-            position: absolute;
-            width: 310px;
-            height: 310px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(35,130,255,.20), transparent 66%);
-            filter: blur(10px);
-        }}
-        .aura-img {{
-            position: relative;
-            z-index: 2;
-            width: 370px;
-            height: 370px;
-            max-width: 88%;
-            border-radius: 50%;
-            object-fit: cover;
-            object-position: center 20%;
-            border: 3px solid rgba(70,170,255,.55);
-            box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 40px rgba(44,157,255,.25);
-        }}
-        .aura-bubble {{
-            position: absolute;
-            z-index: 4;
-            bottom: 18px;
-            right: 0;
-            width: 360px;
-            max-width: 88%;
-            border: 1px solid #2e8eff;
-            border-radius: 22px;
-            padding: 16px 22px;
-            background: rgba(9,34,68,.90);
-            box-shadow: 0 15px 35px rgba(0,0,0,.28);
-        }}
-        .aura-bubble b {{ font-size: 18px; }}
-        .aura-bubble span {{ display: block; color: #9dbbe1; margin-top: 5px; }}
-
-        .features {{
-            display: grid;
-            grid-template-columns: repeat(4,1fr);
-            gap: 48px;
-            margin: 0 0 30px;
-        }}
-        .feature-icon {{
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            display: grid;
-            place-items: center;
-            background: linear-gradient(145deg,rgba(28,75,141,.58),rgba(11,31,64,.8));
-            border: 1px solid rgba(72,153,247,.12);
-            color: #59b9ff;
-            font-size: 28px;
-            margin-bottom: 13px;
-        }}
-        .feature h3 {{ margin: 0 0 7px; font-size: 18px; }}
-        .feature p {{ margin: 0; color: #9fb5d3; line-height: 1.5; font-size: 15px; }}
-
-        .glass {{
-            border: 1px solid var(--line);
-            background: var(--glass);
-            border-radius: 24px;
-            padding: 30px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 20px 55px rgba(0,0,0,.22);
-        }}
-        .page-title {{ font-size: 40px; font-weight: 800; letter-spacing: -1px; margin: 48px 0 20px; }}
-        .approval {{
-            border: 1px solid #e3bd50;
-            border-radius: 18px;
-            padding: 18px;
-            background: rgba(94,73,15,.24);
-            margin: 15px 0;
-        }}
-        .chat-shell {{
-            max-width: 980px;
-            margin: 35px auto 0;
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 20px;
-            background: rgba(4,16,34,.74);
-        }}
-        .auth-card {{ max-width: 600px; margin: 60px auto; }}
-        .small-muted {{ color: #9db6d0; }}
-
-        @media (max-width: 900px) {{
-            .topbar {{ padding: 0; }}
-            .brand-sub, .brand-divider {{ display: none; }}
-            .hero-grid {{ grid-template-columns: 1fr; }}
-            .hero-wrap {{ padding-top: 52px; }}
-            .aura-stage {{ min-height: 420px; }}
-            .features {{ grid-template-columns: repeat(2,1fr); gap: 28px; }}
-            .block-container {{ padding: 0 1rem 2rem; }}
-        }}
-        @media (max-width: 560px) {{
-            .brand-name {{ font-size: 23px; }}
-            .features {{ grid-template-columns: 1fr; }}
-            .hero-title {{ font-size: 3rem; }}
-            .aura-stage::before {{ width: 310px; height: 310px; }}
-            .aura-img {{ width: 270px; height: 270px; }}
-            .aura-bubble {{ right: 0; }}
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+def user_name() -> str:
+    return (st.session_state.user or {}).get("name") or "Aura User"
 
 
-def go(page: str) -> None:
+def user_email() -> str:
+    return (st.session_state.user or {}).get("email") or ""
+
+
+def navigate(page: str) -> None:
     st.session_state.page = page
-    if page != "Home":
-        st.session_state.chat_open = False
     st.rerun()
 
 
 def logout() -> None:
     st.session_state.authenticated = False
     st.session_state.user = None
+    st.session_state.profile = None
     st.session_state.messages = []
     st.session_state.pending_approval = None
-    st.session_state.last_approval = None
     st.session_state.memory = ConversationMemory(max_turns=8)
     st.session_state.page = "Home"
-    st.session_state.chat_open = False
+    st.session_state.dashboard_page = "Chat with Aura"
     st.rerun()
 
 
-def render_nav() -> None:
-    cols = st.columns([3.6, 1.0, 1.0, 1.0, 0.78, 0.9], gap="small")
-    with cols[0]:
-        st.markdown(
-            """
-            <div class="brand">
-              <div class="brand-mark">✦</div>
-              <div class="brand-name">Aura<span>AI</span></div>
-              <div class="brand-divider"></div>
-              <div class="brand-sub">AI Career &amp; Skills Navigator</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    nav = [(1, "Home"), (2, "About"), (3, "Contact")]
-    for idx, label in nav:
-        with cols[idx]:
-            prefix = "navactive" if st.session_state.page == label else "nav"
-            if st.button(label, key=f"{prefix}_{label}", use_container_width=True):
-                go(label)
-
-    if st.session_state.authenticated:
-        with cols[4]:
-            if st.button("Logout", key="navauth_Logout", use_container_width=True):
-                logout()
-    else:
-        with cols[4]:
-            if st.button("Login", key="navauth_Login", use_container_width=True):
-                go("Login")
-        with cols[5]:
-            if st.button("Register", key="navreg_Register", use_container_width=True):
-                go("Register")
+def open_auth(mode: str) -> None:
+    st.session_state.auth_mode = mode
+    auth_dialog()
 
 
-def home_page() -> None:
-    if st.session_state.authenticated and st.session_state.chat_open:
-        render_chat()
-        return
-
-    left, right = st.columns([1.08, 0.92], gap="large")
-    with left:
-        st.markdown('<div class="hero-copy-wrap">', unsafe_allow_html=True)
-        st.markdown(
-            """
-            <div class="eyebrow">✦ &nbsp; Your AI Career Coach</div>
-            <div class="hero-title">Navigate your next move<br>with <span class="gradient">clarity.</span></div>
-            <div class="hero-copy">
-              AI Career &amp; Skills Navigator helps you identify skill gaps,
-              find free learning resources, and explore real-time job market
-              trends — all in one place.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        if st.button("💬  Enter Aura   →", key="enter_aura", type="primary"):
-            if st.session_state.authenticated:
-                st.session_state.chat_open = True
-                # NOTE: no st.rerun() here — Streamlit reruns automatically
-            else:
-                st.session_state.page = "Login"
-                st.session_state.login_notice = True
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with right:
-        avatar = AVATAR_URI
-        if avatar:
-            st.markdown(
-                f"""
-                <div class="aura-stage">
-                  <div class="aura-ring"></div>
-                  <img class="aura-img" src="{avatar}" alt="Aura AI career coach">
-                  <div class="aura-bubble"><b>✦ &nbsp; Hi, I'm Aura!</b><span>Your AI Career &amp; Skills Navigator</span></div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                '<div class="aura-stage"><div class="aura-bubble"><b>✦ &nbsp; Hi, I\'m Aura!</b><span>Your AI Career &amp; Skills Navigator</span></div></div>',
-                unsafe_allow_html=True,
-            )
-
-    st.markdown(
-        """
-        <div class="features">
-          <div class="feature"><div class="feature-icon">◎</div><h3>Find Skill Gaps</h3><p>Discover what skills to build next.</p></div>
-          <div class="feature"><div class="feature-icon">▣</div><h3>Learn for Free</h3><p>Get curated free resources &amp; courses.</p></div>
-          <div class="feature"><div class="feature-icon">↗</div><h3>Market Trends</h3><p>Explore real-time job opportunities.</p></div>
-          <div class="feature"><div class="feature-icon">◈</div><h3>Build Your Future</h3><p>Get personalized career guidance.</p></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def auth_page(register: bool) -> None:
-    title = "Create your Aura account" if register else "Welcome back"
-    subtitle = "Create your account to start your career journey with Aura." if register else "Sign in to continue with Aura."
-    st.markdown(
-        f'<div class="auth-card glass"><div class="page-title" style="margin-top:0">{title}</div><p class="small-muted">{subtitle}</p>',
-        unsafe_allow_html=True,
-    )
-    if st.session_state.pop("login_notice", False) and not register:
-        st.info("Please sign in to enter Aura.")
-    if not firebase_available():
-        st.warning("Firebase is not configured yet. Add your Firebase settings to Streamlit Secrets before using authentication.")
-
-    with st.form("auth_form"):
-        name = st.text_input("Name") if register else ""
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        confirm = st.text_input("Confirm password", type="password") if register else ""
-        fcm_token = st.text_input(
-            "Optional FCM registration token",
-            type="password",
-            help="Optional Firebase Cloud Messaging registration token.",
-        )
-        submitted = st.form_submit_button("Create account" if register else "Sign in", type="primary", use_container_width=True)
-
-    if submitted:
-        if not email or not password:
-            st.error("Email and password are required.")
-        elif register and password != confirm:
-            st.error("Passwords do not match.")
-        else:
-            try:
-                result = register_user(name, email, password, fcm_token) if register else login_user(email, password)
-                st.session_state.authenticated = True
-                st.session_state.user = result
-                st.session_state.page = "Home"
-                st.session_state.chat_open = True   # auto-open chat after auth
-                if fcm_token and not register:
-                    send_login_notification(fcm_token, result.get("name") or "Aura user")
-                st.success("Authentication successful.")
-                st.rerun()
-            except Exception as exc:
-                st.error(str(exc))
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def render_chat() -> None:
-    st.markdown('<div class="chat-shell">', unsafe_allow_html=True)
-    left, right = st.columns([5, 1])
-    with left:
-        st.markdown("## ✦ Aura Chat")
-        st.caption("AI Career & Skills Navigator")
-    with right:
-        if st.button("Close", use_container_width=True):
-            st.session_state.chat_open = False
-            st.session_state.pending_approval = None
+@st.dialog("Welcome to Aura", width="small")
+def auth_dialog():
+    mode = st.session_state.get("auth_mode", "login")
+    st.markdown("### ✦ AuraAI")
+    st.caption("AI Career & Skills Navigator")
+    login_tab, register_tab = st.columns(2)
+    with login_tab:
+        if st.button("Login", key="dialog_login_tab", use_container_width=True, type="primary" if mode == "login" else "secondary"):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+    with register_tab:
+        if st.button("Register", key="dialog_register_tab", use_container_width=True, type="primary" if mode == "register" else "secondary"):
+            st.session_state.auth_mode = "register"
             st.rerun()
 
-    for message in st.session_state.messages:
-        with st.chat_message(
-            message["role"],
-            avatar=AVATAR_URI if message["role"] == "assistant" and AVATAR_URI else None,
-        ):
-            st.markdown(message["content"])
+    if not firebase_available():
+        st.warning("Firebase authentication is not configured. Add the Firebase settings required by the original project to Streamlit Secrets before deploying.")
 
-    pending = st.session_state.pending_approval
-    if pending:
+    with st.form("aura_auth_form", clear_on_submit=False):
+        name = st.text_input("Full name", placeholder="Your full name") if mode == "register" else ""
+        email = st.text_input("Email", placeholder="you@example.com")
+        password = st.text_input("Password", type="password", placeholder="Your password")
+        confirm = st.text_input("Confirm password", type="password") if mode == "register" else ""
+        fcm_token = st.text_input("FCM token (optional)", type="password") if mode == "register" else ""
+        submitted = st.form_submit_button("Create account" if mode == "register" else "Log in", type="primary", use_container_width=True)
+        forgot_submitted = (
+            st.form_submit_button("Forgot password?", type="secondary", use_container_width=False)
+            if mode == "login" else False
+        )
+
+    if forgot_submitted:
+        try:
+            if not email.strip():
+                st.error("Enter your email first.")
+            else:
+                from firebase_service import send_password_reset
+                send_password_reset(email.strip())
+                st.success("If that account exists, Firebase has sent a password-reset email.")
+        except Exception as exc:
+            st.error(str(exc))
+
+    if submitted:
+        try:
+            if not email or not password:
+                raise ValueError("Email and password are required.")
+            if mode == "register":
+                if not name.strip():
+                    raise ValueError("Full name is required.")
+                if password != confirm:
+                    raise ValueError("Passwords do not match.")
+                if len(password) < 8:
+                    raise ValueError("Use at least 8 characters for your password.")
+                result = register_user(name, email, password, fcm_token)
+            else:
+                result = login_user(email, password)
+
+            st.session_state.authenticated = True
+            st.session_state.user = result
+            st.session_state.profile = get_profile(result)
+            st.session_state.page = "Dashboard"
+            st.session_state.dashboard_page = "Chat with Aura"
+            st.session_state.auth_notice = ""
+            if fcm_token and mode == "login":
+                send_login_notification(fcm_token, result.get("name") or "Aura user")
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+
+def render_header() -> None:
+    """Responsive public header. Desktop uses a single compact row; mobile uses a menu."""
+    with st.container(key="public-header"):
+        logo_col, home_col, about_col, contact_col, login_col, register_col = st.columns(
+            [2.35, 1, 1, 1, 1, 1], gap="small", vertical_alignment="center"
+        )
+
+        with logo_col:
+            st.markdown(
+                '<div class="public-brand"><div class="brand-mark">✦</div>'
+                '<div class="brand-name">Aura<span>AI</span></div>'
+                '<div class="brand-divider"></div>'
+                '<div class="brand-sub">AI Career &amp; Skills Navigator</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        with home_col:
+            if st.button("Home", key="public_Home", use_container_width=True,
+                         type="primary" if st.session_state.page == "Home" else "secondary"):
+                navigate("Home")
+        with about_col:
+            if st.button("About", key="public_About", use_container_width=True,
+                         type="primary" if st.session_state.page == "About" else "secondary"):
+                navigate("About")
+        with contact_col:
+            if st.button("Contact", key="public_Contact", use_container_width=True,
+                         type="primary" if st.session_state.page == "Contact" else "secondary"):
+                navigate("Contact")
+        with login_col:
+            if st.session_state.authenticated:
+                if st.button("Dashboard", key="public_dashboard", use_container_width=True, type="primary"):
+                    navigate("Dashboard")
+            else:
+                if st.button("Login", key="public_login", use_container_width=True, type="secondary"):
+                    open_auth("login")
+        with register_col:
+            if st.session_state.authenticated:
+                if st.button(f"{initials(user_name())}  {user_name()[:10]}", key="public_logout",
+                             use_container_width=True, type="secondary"):
+                    logout()
+            else:
+                if st.button("Register", key="public_register", use_container_width=True, type="primary"):
+                    open_auth("register")
+
+    # Mobile-only navigation. The CSS hides this block on desktop.
+    with st.container(key="mobile-public-nav"):
+        with st.expander("☰  Menu", expanded=False):
+            c1, c2 = st.columns(2, gap="small")
+            with c1:
+                if st.button("⌂  Home", key="mobile_public_home", use_container_width=True):
+                    navigate("Home")
+                if st.button("▣  Contact", key="mobile_public_contact", use_container_width=True):
+                    navigate("Contact")
+            with c2:
+                if st.button("◈  About", key="mobile_public_about", use_container_width=True):
+                    navigate("About")
+                if st.session_state.authenticated:
+                    if st.button("▤  Dashboard", key="mobile_public_dashboard", use_container_width=True, type="primary"):
+                        navigate("Dashboard")
+                else:
+                    if st.button("⇥  Login", key="mobile_public_login", use_container_width=True):
+                        open_auth("login")
+                    if st.button("＋  Register", key="mobile_public_register", use_container_width=True, type="primary"):
+                        open_auth("register")
+
+def render_home() -> None:
+    st.markdown('<div class="hero">', unsafe_allow_html=True)
+    left, right = st.columns([1.08, .92], gap="large")
+    with left:
+        st.markdown('<span class="eyebrow">✦ &nbsp; Your AI Career Coach</span>', unsafe_allow_html=True)
+        st.markdown('<h1>Navigate your next move with <span class="gradient">clarity.</span></h1>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-copy">AI Career &amp; Skills Navigator helps you identify skill gaps, find free learning resources, and explore real-time job market trends — all in one place.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
+        if st.button("💬  Explore Aura AI  →", key="explore_aura", use_container_width=False, type="primary"):
+            if st.session_state.authenticated:
+                navigate("Dashboard")
+            else:
+                open_auth("login")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with right:
+        st.markdown(f'<div class="aura-stage"><img src="{aura_data_uri()}"/><div class="aura-bubble"><b>✦ &nbsp; Hi, I\'m Aura!</b><span>Your AI Career &amp; Skills Navigator</span></div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('''<div class="feature-grid"><div class="feature"><div class="feature-icon">◎</div><h3>Find Skill Gaps</h3><p>Discover what skills to build next.</p></div><div class="feature"><div class="feature-icon">▣</div><h3>Learn for Free</h3><p>Get curated free resources &amp; courses.</p></div><div class="feature"><div class="feature-icon">↗</div><h3>Market Trends</h3><p>Explore real-time job opportunities.</p></div><div class="feature"><div class="feature-icon">◈</div><h3>Build Your Future</h3><p>Get personalized career guidance.</p></div></div>''', unsafe_allow_html=True)
+
+
+def render_about() -> None:
+    st.markdown('<div class="section"><h2>About AuraAI</h2><p class="muted">Aura is an AI career coach that understands a user goal, retrieves relevant knowledge, uses approved tools when needed, and keeps the user in control of consequential decisions.</p></div>', unsafe_allow_html=True)
+    st.markdown('''<div class="cards"><div class="glass"><h3>Agentic workflow</h3><p>Goal → Decide → Act → Observe → Continue/Complete. CrewAI orchestrates the agent, while the existing project policy limits execution retries.</p></div><div class="glass"><h3>RAG knowledge base</h3><p>FAISS and the all-MiniLM-L6-v2 embedding model retrieve project-specific career information before the LLM answers.</p></div><div class="glass"><h3>Human-in-the-loop</h3><p>Important career decisions can pause for explicit approval, rejection, or a revised request.</p></div></div>''', unsafe_allow_html=True)
+
+
+def render_contact() -> None:
+    """Responsive contact section with a polished message form."""
+    st.markdown(
+        '<div class="contact-hero"><span class="eyebrow">✦ &nbsp; We would love to hear from you</span>'
+        '<h2>Contact <span class="gradient">AuraAI</span></h2>'
+        '<p class="muted">Questions, feedback, collaboration ideas, or help with the application? '
+        'Send us a message and the AuraAI team can follow up.</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([0.9, 1.35], gap="large")
+    with left:
         st.markdown(
-            f"""
-            <div class="approval">
-              <b>Human approval checkpoint</b><br><br>
-              Aura identified this as a potentially consequential or preference-sensitive request.
-              Please confirm before proceeding.<br><br>
-              <b>Reason:</b> {pending['reason']}<br>
-              <b>Requested action:</b> {pending['action']}
-            </div>
-            """,
+            '<div class="contact-info-card">'
+            '<div class="contact-info-icon">✉</div><h3>Get in touch</h3>'
+            '<p class="muted">We welcome product feedback, UI suggestions and questions about AuraAI.</p>'
+            '<div class="contact-detail"><b>Email</b><span>daniyalriazcute@gmail.com</span></div>'
+            '<div class="contact-detail"><b>Project</b><span>AuraAI — AI Career &amp; Skills Navigator</span></div>'
+            '<div class="contact-detail"><b>Response</b><span>We will review your message and follow up as appropriate.</span></div>'
+            '</div>',
             unsafe_allow_html=True,
         )
-        a, b = st.columns(2)
-        with a:
-            if st.button("✓ Approve and continue", type="primary", use_container_width=True):
-                st.session_state.last_approval = {"approved": True, **pending}
-                st.session_state.pending_approval = None
-                _execute_pending(pending)
-                st.rerun()
-        with b:
-            if st.button("✕ Reject / revise", use_container_width=True):
-                st.session_state.last_approval = {"approved": False, **pending}
-                st.session_state.pending_approval = None
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": "No problem. I will not proceed with that action. Tell me how you would like to adjust the request.",
-                })
-                st.rerun()
+    with right:
+        st.markdown('<div class="contact-form-card"><h3>Send us a message</h3><p class="muted">Fill in the form below.</p>', unsafe_allow_html=True)
+        with st.form("contact_form", clear_on_submit=True):
+            c1, c2 = st.columns(2, gap="medium")
+            with c1:
+                contact_name = st.text_input("Name", placeholder="Your name")
+            with c2:
+                contact_email = st.text_input("Email", placeholder="you@example.com")
+            subject = st.text_input("Subject", placeholder="How can we help?")
+            message = st.text_area("Message", placeholder="Write your message here...", height=170)
+            submitted = st.form_submit_button("Send message  →", type="primary", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    prompt = st.chat_input("Ask Aura about your career, skills, learning plan, or market...")
-    st.markdown('</div>', unsafe_allow_html=True)
-    if prompt:
-        _handle_user_message(prompt)
+        if submitted:
+            if not contact_name.strip() or not contact_email.strip() or not message.strip():
+                st.error("Please complete your name, email and message before sending.")
+            else:
+                if save_contact_message(contact_name, contact_email, subject, message):
+                    st.success("Message received. Thank you for contacting AuraAI.")
+                else:
+                    st.error("The contact service is not configured yet. Please try again after Firebase/Firestore is configured.")
 
 
-def _handle_user_message(prompt: str) -> None:
+def _safe_markdown(text: str) -> str:
+    return html.escape(sanitize_output(text)).replace("\n", "<br>")
+
+
+def _format_time(value: str | None = None) -> str:
+    return value or datetime.now().strftime("%I:%M %p")
+
+
+def _dashboard_intro() -> str:
+    name = html.escape(user_name().split()[0])
+    return (f"Great question, <b>{name}</b>! Becoming a stronger career professional requires a mix of technical skills, hands-on practice, and continuous learning. "
+            "Aura can use your goal, recent conversation, project knowledge base and approved tools to build a practical plan.")
+
+
+def _seed_messages() -> list[dict]:
+    return []
+
+
+def _add_user_message(prompt: str, completion_key: str = "chat") -> None:
     prompt = validate_user_input(prompt)
     if not prompt:
         return
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt, "time": _format_time()})
+    title = prompt if len(prompt) <= 80 else prompt[:77] + "..."
+    st.session_state.profile = save_recent_chat(st.session_state.user, title, prompt)
     decision = requires_approval(prompt)
     if decision["required"]:
-        st.session_state.pending_approval = {
-            "query": prompt,
-            "reason": decision["reason"],
-            "action": decision["action"],
-        }
-        st.rerun()
-    _run_and_store(prompt, approved=False)
-    st.rerun()
+        st.session_state.pending_approval = {"query": prompt, "completion_key": completion_key, **decision}
+        return
+    _run_and_store(prompt, approved=False, completion_key=completion_key)
 
 
-def _execute_pending(pending: dict) -> None:
-    _run_and_store(pending["query"], approved=True)
-
-
-def _run_and_store(prompt: str, approved: bool) -> None:
-    with st.spinner("Aura is working through the request..."):
+def _run_and_store(prompt: str, approved: bool, completion_key: str = "chat") -> None:
+    with st.spinner("Aura is working through your request..."):
         try:
             retrieved = retrieve_context(prompt, k=4)
-            result = run_aura(
-                user_query=prompt,
-                memory=st.session_state.memory,
-                retrieved_context=retrieved,
-                human_approved=approved,
-            )
+            result = run_aura(user_query=prompt, memory=st.session_state.memory, retrieved_context=retrieved, human_approved=approved)
             safe = sanitize_output(result)
             st.session_state.memory.add("user", prompt)
             st.session_state.memory.add("assistant", safe)
-            st.session_state.messages.append({"role": "assistant", "content": safe})
+            st.session_state.messages.append({"role": "assistant", "content": safe, "time": _format_time()})
+            # Progress changes only after Aura successfully completes the action.
+            st.session_state.profile = mark_complete(st.session_state.user, completion_key)
         except Exception as exc:
-            safe_error = sanitize_output(
-                "I couldn't complete that request. Please try again. "
-                f"Technical detail: {exc}"
-            )
-            st.session_state.messages.append({"role": "assistant", "content": safe_error})
-
+            st.session_state.messages.append({"role": "assistant", "content": f"I couldn't complete that request. Please try again. Technical detail: {sanitize_output(exc)}", "time": _format_time()})
 
 def requires_approval(prompt: str) -> dict:
     text = prompt.lower().strip()
-    consequential = [
-        "should i quit", "should i resign", "should i leave my job",
-        "should i accept", "should i reject", "which career should i choose",
-        "which career should i pursue", "choose a career for me",
-        "tell me what career i should", "should i switch careers",
-        "should i change careers", "which certification should i take",
-        "should i spend", "should i pay", "should i relocate",
-        "should i move", "should i apply", "make the decision for me",
-    ]
-    preference_sensitive = [
-        "based on my situation", "based on my experience",
-        "personalized recommendation", "what should i do",
-        "what would you choose for me", "recommend one for me",
-        "which one is right for me",
-    ]
+    consequential = ["should i quit", "should i resign", "should i leave my job", "should i accept", "should i reject", "which career should i choose", "which career should i pursue", "choose a career for me", "should i switch careers", "should i change careers", "should i spend", "should i pay", "should i relocate", "should i move", "make the decision for me"]
+    preference_sensitive = ["based on my situation", "based on my experience", "personalized recommendation", "what should i do", "what would you choose for me", "recommend one for me", "which one is right for me"]
     if any(p in text for p in consequential):
-        return {
-            "required": True,
-            "reason": "This request asks Aura to support a consequential personal career decision.",
-            "action": "Review the relevant options, trade-offs and evidence before Aura provides a personalized recommendation.",
-        }
+        return {"required": True, "reason": "This request asks Aura to support a consequential personal career decision.", "action": "Review relevant options, trade-offs and evidence before Aura provides a personalized recommendation."}
     if any(p in text for p in preference_sensitive):
-        return {
-            "required": True,
-            "reason": "This request depends on an important personal preference or situation.",
-            "action": "Use the conversation context to prepare a personalized comparison and practical next step.",
-        }
+        return {"required": True, "reason": "This request depends on an important personal preference or situation.", "action": "Use conversation context to prepare a personalized comparison and practical next step."}
     return {"required": False, "reason": "", "action": ""}
 
 
-def about_page() -> None:
-    st.markdown('<div class="page-title">About Aura</div>', unsafe_allow_html=True)
+def _render_message(message: dict) -> None:
+    role = message.get("role")
+    content = message.get("content", "")
+    safe = _safe_markdown(content)
+    if role == "user":
+        st.markdown(f'<div class="bubble me">{safe}<small>{html.escape(message.get("time", ""))} ✓✓</small></div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="bubble assistant"><b style="color:#4db3ff">✦ Aura</b><br>{safe}<small>{html.escape(message.get("time", ""))}</small></div>', unsafe_allow_html=True)
+
+
+def _send_from_action(prompt: str, completion_key: str | None = None) -> None:
+    _add_user_message(prompt, completion_key or "chat")
+    st.rerun()
+
+def render_chat_panel() -> None:
+    # A real Streamlit container is used so CSS can control the chat as one
+    # viewport-sized panel instead of relying on HTML wrappers between widgets.
+    with st.container(key="dashboard-chat"):
+        st.markdown('<div class="chat-head"><div class="chat-title"><span class="spark">✦</span><div><b>Chat with Aura</b><div class="muted">Your AI Career Coach</div></div></div><span class="online">● &nbsp; Aura is online</span></div>', unsafe_allow_html=True)
+        with st.container(key="dashboard-messages"):
+            if not st.session_state.messages:
+                st.markdown(f'<div class="bubble assistant welcome-bubble"><b style="color:#4db3ff">✦ Aura</b><br>{_dashboard_intro()}<div class="section-box"><h5>How Aura can help</h5><ul><li>Identify skill gaps and foundations</li><li>Create a career roadmap</li><li>Find learning resources</li><li>Research current opportunities when needed</li></ul></div><span class="muted">Start by telling Aura your target role and current experience.</span></div>', unsafe_allow_html=True)
+            for message in st.session_state.messages:
+                _render_message(message)
+
+        pending = st.session_state.pending_approval
+        if pending:
+            st.warning(f"Human approval required\n\n{pending['reason']}\n\nRequested action: {pending['action']}")
+            a, b = st.columns(2)
+            with a:
+                if st.button("✓ Approve and continue", key="approve", type="primary", use_container_width=True):
+                    query = pending["query"]
+                    st.session_state.pending_approval = None
+                    _run_and_store(query, approved=True, completion_key=pending.get("completion_key", "chat"))
+                    st.rerun()
+            with b:
+                if st.button("✕ Reject / revise", key="reject", use_container_width=True):
+                    st.session_state.pending_approval = None
+                    st.session_state.messages.append({"role":"assistant","content":"No problem. I will not proceed with that action. Tell me how you would like to adjust the request.","time":_format_time()})
+                    st.rerun()
+
+        chip_cols = st.columns(4)
+        chips = [("Show me a 90-day roadmap", "roadmap"), ("Free learning resources", "resources"), ("Compare AppSec vs GRC", "skills"), ("Help me with job applications", "opportunities")]
+        for col, (label, key) in zip(chip_cols, chips):
+            with col:
+                if st.button(label, key=f"chip_{key}", use_container_width=True):
+                    _send_from_action(label, key)
+
+        with st.form("chat_form", clear_on_submit=True):
+            cols = st.columns([.08, .84, .08])
+            with cols[0]:
+                st.markdown("📎")
+            with cols[1]:
+                prompt = st.text_input("Message", placeholder="Type your message to Aura...", label_visibility="collapsed")
+            with cols[2]:
+                send = st.form_submit_button("➤", use_container_width=True, type="primary")
+        if send and prompt:
+            _add_user_message(prompt)
+            st.rerun()
+
+def render_left_sidebar() -> None:
+    profile = st.session_state.profile or get_profile(st.session_state.user)
+    st.session_state.profile = profile
+    items = [
+        ("⌂  Chat with Aura", "chat"), ("▱  Career Roadmap", "roadmap"), ("◇  Skills", "skills"),
+        ("▣  Opportunities", "opportunities"), ("▤  Resources", "resources")
+    ]
+    with st.container(key="dashboard-left"):
+        for label, key in items:
+            selected = st.session_state.dashboard_page == label.split("  ", 1)[-1]
+            if st.button(label, key=f"side_{key}", use_container_width=True, type="primary" if selected else "secondary"):
+                st.session_state.dashboard_page = label.split("  ", 1)[-1]
+                st.rerun()
+
+        progress = int(profile.get("progress", 0))
+        completed = set(profile.get("completed") or [])
+        st.markdown(
+            f'<div class="progress-card"><b>Your Progress</b>'
+            f'<div class="progress-row" style="margin-top:12px">'
+            f'<div class="ring" style="--p:{progress}"><div>{progress}%</div></div>'
+            f'<div><div>Career Growth</div><div class="muted">{len(completed)}/7 milestones complete</div></div>'
+            f'</div></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="recent"><b>Recent Chats</b>', unsafe_allow_html=True)
+        chats = profile.get("recent_chats") or []
+        if not chats:
+            st.markdown('<p class="muted" style="margin-top:12px">No conversations yet.</p>', unsafe_allow_html=True)
+        for index, item in enumerate(chats[:4]):
+            title = item.get("title", "Conversation")
+            prompt = item.get("prompt", title)
+            if st.button(title[:52], key=f"recent_{index}", use_container_width=True):
+                st.session_state.dashboard_page = "Chat with Aura"
+                _send_from_action(prompt, "chat")
+            st.markdown(f'<small class="recent-time">{html.escape(item.get("timestamp", ""))}</small>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+def render_right_sidebar() -> None:
+    with st.container(key="dashboard-right"):
+        # Aura card (Removed multi-line indentation to prevent Markdown code-block rendering)
+        aura_card_html = (
+            '<div class="aura-card">'
+            f'<div class="aura-pic"><img src="{aura_data_uri()}" alt="Aura AI"></div>'
+            '<h2>Aura <span>AI</span></h2>'
+            '<p class="aura-role">Your Career Coach &amp; Guide</p>'
+            '<p class="muted">Smart guidance. Better decisions. A brighter future.</p>'
+            '</div>'
+        )
+
+        st.markdown(aura_card_html, unsafe_allow_html=True)
+
+        facts = [
+            ("◉", "Powered by GPT-OSS-120B", "Advanced reasoning & analysis"),
+            ("▣", "RAG Knowledge Base", "Curated career resources"),
+            ("♣", "4 External Tools", "Search · Wikipedia · API · Calculator"),
+            ("◌", "Human-in-the-Loop", "For important decisions & preferences"),
+        ]
+
+        facts_html = '<div class="facts-card">'
+        for icon, title, subtitle in facts:
+            # Concatenated without leading spaces
+            facts_html += (
+                '<div class="fact">'
+                f'<div class="fact-icon">{icon}</div>'
+                '<div>'
+                f'<b>{title}</b>'
+                f'<small>{subtitle}</small>'
+                '</div>'
+                '</div>'
+            )
+        facts_html += '</div>'
+
+        st.markdown(facts_html, unsafe_allow_html=True)
+
+        # Quick actions
+        st.markdown('<div class="quick"><h4>⚡ Quick Actions</h4>', unsafe_allow_html=True)
+
+        actions = [
+            ("Generate Career Roadmap", "Generate my career roadmap", "roadmap"),
+            ("Analyze My Skills", "Analyze my skills", "skills"),
+            ("Explore Job Opportunities", "Explore job opportunities", "opportunities"),
+            ("Find Learning Resources", "Find free learning resources", "resources"),
+        ]
+
+        for label, prompt, key in actions:
+            if st.button(label + "  ›", key=f"quick_{key}", use_container_width=True):
+                st.session_state.dashboard_page = "Chat with Aura"
+                _send_from_action(prompt, key)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="quote">✦ &nbsp; “Big dreams need a plan.<br>'
+            '&nbsp;&nbsp;&nbsp;&nbsp;I\'m here to help you build yours.”'
+            '<br><span style="float:right">— Aura</span></div>',
+            unsafe_allow_html=True,
+        )
+def render_profile_panel() -> None:
+    profile = st.session_state.profile or get_profile(st.session_state.user)
+    progress = int(profile.get("progress", 0))
     st.markdown(
-        """
-        <div class="glass">
-        <b>Aura is a single-agent career and skills navigator.</b><br><br>
-        CrewAI provides agent orchestration. Groq provides the LLM. FAISS and
-        sentence-transformers provide RAG. Short-term memory preserves recent
-        conversation context. Four controlled external tools provide research,
-        public API data and arithmetic. A selective human-in-the-loop checkpoint
-        pauses consequential or preference-sensitive requests for explicit user approval.
-        </div>
-        """,
+        f'<div class="panel profile-panel"><div class="profile-large"><img src="{avatar_url(user_email(), 160)}"/></div>'
+        f'<h2>{html.escape(user_name())}</h2><p class="muted">{html.escape(user_email())}</p>'
+        f'<div class="profile-progress"><b>Career Growth</b><strong>{progress}%</strong></div>'
+        f'<div class="progress-bar"><span style="width:{progress}%"></span></div></div>',
         unsafe_allow_html=True,
     )
-    st.markdown('<div class="page-title" style="font-size:28px">Agent loop</div>', unsafe_allow_html=True)
-    st.code("GOAL → DECIDE → [HUMAN APPROVAL when needed] → ACT → OBSERVE → CONTINUE/COMPLETE → RETRY ONCE", language="text")
-    st.markdown('<div class="page-title" style="font-size:28px">Security controls</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="glass">Prompt-injection defense · system-prompt confidentiality · untrusted-tool-data handling · restricted HTTP hosts · safe arithmetic parsing · output sanitization · secret separation · human approval checkpoints.</div>',
-        unsafe_allow_html=True,
-    )
+    if st.button("Back to Chat with Aura", key="profile_back", type="primary"):
+        st.session_state.dashboard_page = "Chat with Aura"
+        st.rerun()
 
 
-def contact_page() -> None:
-    st.markdown('<div class="page-title">Contact</div>', unsafe_allow_html=True)
-    st.markdown('<div class="glass"><b>Email</b><br><br>daniyalriazcute@gmail.com</div>', unsafe_allow_html=True)
+def render_dashboard_content() -> None:
+    page = st.session_state.dashboard_page
+    if page in ("Chat with Aura", "Profile"):
+        return
+    prompts = {
+        "Career Roadmap": "Generate a practical career roadmap for my current goal. Ask for my target role and experience if needed.",
+        "Skills": "Analyze the skills I should build for my target career and identify likely gaps.",
+        "Opportunities": "Explore current job opportunities relevant to my target role. Ask for location if needed.",
+        "Resources": "Find free learning resources relevant to my target career and current skill level.",
+    }
+    st.markdown(f'<div class="panel" style="height:100%;padding:28px"><h2>{html.escape(page)}</h2><p class="muted">This section is connected to Aura. Use the action below to send the request through the same RAG + CrewAI workflow.</p></div>', unsafe_allow_html=True)
+    if st.button(f"Open {page} in Chat", key=f"open_{page}", type="primary"):
+        st.session_state.dashboard_page = "Chat with Aura"
+        completion_key = {"Career Roadmap": "roadmap", "Skills": "skills", "Opportunities": "opportunities", "Resources": "resources"}[page]
+        _send_from_action(prompts[page], completion_key)
 
 
-inject_css()
-render_nav()
+def render_mobile_dashboard_nav() -> None:
+    """Compact mobile navigation replacing the three-column dashboard rails."""
+    with st.container(key="mobile-dashboard-nav"):
+        with st.expander("☰  Dashboard menu", expanded=False):
+            items = [
+                ("⌂  Chat with Aura", "Chat with Aura", "chat"),
+                ("▱  Career Roadmap", "Career Roadmap", "roadmap"),
+                ("◇  Skills", "Skills", "skills"),
+                ("▣  Opportunities", "Opportunities", "opportunities"),
+                ("▤  Resources", "Resources", "resources"),
+                ("◎  Profile", "Profile", "profile"),
+            ]
+            cols = st.columns(2, gap="small")
+            for index, (label, page, key) in enumerate(items):
+                with cols[index % 2]:
+                    if st.button(
+                        label,
+                        key=f"mobile_dash_{key}",
+                        use_container_width=True,
+                        type="primary" if st.session_state.dashboard_page == page else "secondary",
+                    ):
+                        st.session_state.dashboard_page = page
+                        st.rerun()
+
+            profile = st.session_state.profile or {}
+            progress = int(profile.get("progress", 0))
+            completed = len(set(profile.get("completed") or []))
+            st.markdown(
+                f'<div class="mobile-progress"><b>Your Progress</b>'
+                f'<span>{progress}% · {completed}/7 milestones</span></div>',
+                unsafe_allow_html=True,
+            )
+
+
+def render_dashboard() -> None:
+    if not st.session_state.authenticated:
+        navigate("Home")
+        return
+
+    st.session_state.profile = st.session_state.profile or get_profile(st.session_state.user)
+
+    # Compact dashboard header. The same row becomes a three-control mobile bar.
+    with st.container(key="dashboard-header"):
+        logo_col, spacer_col, notify_col, profile_col = st.columns(
+            [4.8, 0.6, 0.7, 1.9], gap="small", vertical_alignment="center"
+        )
+        with logo_col:
+            st.markdown(
+                '<div class="topbar-brand"><div class="brand-mark">✦</div>'
+                '<div class="brand-name">Aura<span>AI</span></div>'
+                '<div class="brand-divider"></div><div class="brand-sub">AI Career &amp; Skills Navigator</div></div>',
+                unsafe_allow_html=True,
+            )
+        with notify_col:
+            with st.popover("🔔", use_container_width=True):
+                st.markdown("### Notifications")
+                st.success(f"Welcome back, {html.escape(user_name().split()[0])}.")
+                st.info("Your Aura workspace is ready. New accounts start at 0% progress.")
+                st.caption("Progress updates when a career capability is successfully completed.")
+                if st.button("Mark notifications as read", key="mark_notifications_read", use_container_width=True):
+                    st.session_state.notifications_read = True
+                    st.rerun()
+        with profile_col:
+            with st.popover(f"👤 {user_name()[:18]}  ▾", use_container_width=True):
+                st.markdown(f"### {html.escape(user_name())}")
+                st.caption(user_email())
+                st.markdown(
+                    f'<div class="profile-menu-avatar"><img src="{avatar_url(user_email(), 96)}"/></div>',
+                    unsafe_allow_html=True,
+                )
+                if st.button("View profile", key="profile_view", use_container_width=True):
+                    st.session_state.dashboard_page = "Profile"
+                    st.rerun()
+                if st.button("Dashboard home", key="profile_home", use_container_width=True):
+                    st.session_state.dashboard_page = "Chat with Aura"
+                    st.rerun()
+                if st.button("Log out", key="profile_logout", type="primary", use_container_width=True):
+                    logout()
+
+    render_mobile_dashboard_nav()
+
+    with st.container(key="dashboard-shell"):
+        left, center, right = st.columns([1.00, 3.05, 1.38], gap="medium")
+        with left:
+            render_left_sidebar()
+        with center:
+            if st.session_state.dashboard_page == "Chat with Aura":
+                render_chat_panel()
+            elif st.session_state.dashboard_page == "Profile":
+                render_profile_panel()
+            else:
+                render_dashboard_content()
+        with right:
+            render_right_sidebar()
+
+
+# Public page header only. Dashboard gets the exact dashboard header inside its own layout.
+if st.session_state.page != "Dashboard":
+    render_header()
 
 if st.session_state.page == "Home":
-    home_page()
+    render_home()
 elif st.session_state.page == "About":
-    about_page()
+    render_about()
 elif st.session_state.page == "Contact":
-    contact_page()
-elif st.session_state.page == "Login":
-    auth_page(register=False)
-elif st.session_state.page == "Register":
-    auth_page(register=True)
+    render_contact()
+elif st.session_state.page == "Dashboard":
+    render_dashboard()
+
+if st.session_state.page != "Dashboard":
+    st.markdown('<div class="footer"><span>© 2026 AuraAI. All rights reserved.</span><span>AI Career &amp; Skills Navigator · Built with CrewAI, Groq, RAG &amp; Firebase</span></div>', unsafe_allow_html=True)

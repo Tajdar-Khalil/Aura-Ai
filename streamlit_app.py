@@ -22,7 +22,7 @@ st.set_page_config(
 # 2. Inject CSS to hide all default Streamlit chrome & padding
 st.markdown("""
 <style>
-    #MainMenu, header, footer, [data-testid="stHeader"] {
+    #MainMenu, header, footer, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
@@ -31,20 +31,27 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
         max-width: 100% !important;
+        height: 100vh !important;
+        overflow: hidden !important;
     }
     div[data-testid="stVerticalBlock"] {
         gap: 0 !important;
     }
     iframe {
-        width: 100% !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
         border: none !important;
-        min-height: 100vh !important;
-        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 999999 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Retrieve GROQ_API_KEY
+# 3. Retrieve GROQ_API_KEY from environment or Streamlit secrets
 groq_key = os.getenv("GROQ_API_KEY", "").strip()
 if not groq_key or "your_" in groq_key.lower():
     try:
@@ -53,15 +60,16 @@ if not groq_key or "your_" in groq_key.lower():
     except Exception:
         pass
 
-# 4. Determine Active Page
+# 4. Determine Active Page from Query Parameters
 try:
-    current_page = st.query_params.get("page", "index").lower()
+    current_page = st.query_params.get("page", "index").lower().strip()
 except Exception:
     current_page = "index"
 
 PAGE_MAP = {
     "index": "index.html",
     "home": "index.html",
+    "": "index.html",
     "dashboard": "dashboard.html",
     "signin": "signin.html",
     "login": "signin.html",
@@ -103,29 +111,33 @@ if auth_js_path.exists():
 bridge_script = f"""
 <script>
 window.__GROQ_API_KEY__ = "{groq_key}";
-// Navigation bridge for parent window URL query params
-document.addEventListener('DOMContentLoaded', function() {{
-    document.querySelectorAll('a').forEach(function(link) {{
-        var href = link.getAttribute('href') || '';
-        if (href.startsWith('#')) return;
-        if (href.endsWith('.html') || href === '/' || href.includes('dashboard') || href.includes('login') || href.includes('signin') || href.includes('signup') || href.includes('register') || href.includes('about') || href.includes('contact')) {{
-            link.addEventListener('click', function(e) {{
-                var page = '';
-                if (href.includes('dashboard')) page = 'dashboard';
-                else if (href.includes('signin') || href.includes('login')) page = 'signin';
-                else if (href.includes('signup') || href.includes('register')) page = 'signup';
-                else if (href.includes('about')) page = 'about';
-                else if (href.includes('contact')) page = 'contact';
-                else page = 'index';
 
-                if (window.top && window.top !== window) {{
-                    e.preventDefault();
-                    window.top.location.search = '?page=' + page;
-                }}
-            }});
+// Navigation bridge: intercepts internal links to maintain state inside Streamlit
+document.addEventListener('click', function(e) {{
+    var a = e.target.closest('a');
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {{
+        return;
+    }}
+    
+    var page = '';
+    if (href.includes('dashboard')) page = 'dashboard';
+    else if (href.includes('signin') || href.includes('login')) page = 'signin';
+    else if (href.includes('signup') || href.includes('register')) page = 'signup';
+    else if (href.includes('about')) page = 'about';
+    else if (href.includes('contact')) page = 'contact';
+    else if (href.includes('index') || href === '/') page = 'index';
+    
+    if (page) {{
+        e.preventDefault();
+        if (window.top && window.top !== window) {{
+            window.top.location.search = '?page=' + page;
+        }} else {{
+            window.location.search = '?page=' + page;
         }}
-    }});
-}});
+    }}
+}}, true);
 </script>
 """
 
@@ -135,4 +147,4 @@ else:
     html_content = bridge_script + html_content
 
 # 8. Render the Full Modern Glassmorphism Web App in Streamlit
-components.html(html_content, height=980, scrolling=True)
+components.html(html_content, height=1000, scrolling=True)

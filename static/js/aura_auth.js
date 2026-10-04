@@ -59,7 +59,7 @@
           return { success: false, error: data.error || 'Invalid email or password.' };
         }
       } catch (err) {
-        // Local fallback if server endpoint is not hosted (e.g. Streamlit Cloud)
+        // Fallback for standalone / Streamlit Cloud client deployment
         try {
           const accounts = JSON.parse(localStorage.getItem('aura_accounts') || '[]');
           const found = accounts.find(a => a.email.toLowerCase() === email.trim().toLowerCase());
@@ -70,7 +70,7 @@
           } else if (found) {
             return { success: false, error: 'Incorrect password.' };
           } else {
-            // If no accounts yet, accept as first demo login
+            // First demo user fallback
             const userData = { id: 1, name: email.split('@')[0], email: email.trim(), initials: this.getInitials(email) };
             this.setUser(userData);
             return { success: true, user: userData };
@@ -96,7 +96,7 @@
           return { success: false, error: data.error || 'Failed to register account.' };
         }
       } catch (err) {
-        // Local fallback if server endpoint is not hosted (e.g. Streamlit Cloud)
+        // Fallback for standalone / Streamlit Cloud client deployment
         try {
           let accounts = JSON.parse(localStorage.getItem('aura_accounts') || '[]');
           if (accounts.some(a => a.email.toLowerCase() === email.trim().toLowerCase())) {

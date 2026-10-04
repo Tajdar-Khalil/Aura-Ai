@@ -52,11 +52,16 @@ def _init_admin() -> bool:
     if firebase_admin._apps:
         return True
 
+    from pathlib import Path
+    json_path = Path(__file__).resolve().parent / "firebase_service_account.json"
+
     try:
-        if "firebase" in st.secrets:
+        if json_path.is_file():
+            cred = credentials.Certificate(str(json_path))
+            firebase_admin.initialize_app(cred)
+            return True
+        elif hasattr(st, "secrets") and "firebase" in st.secrets:
             sa = dict(st.secrets["firebase"])
-            # The private key may come as a normal string with real newlines,
-            # or as escaped \n. Normalize it.
             if "private_key" in sa and isinstance(sa["private_key"], str):
                 sa["private_key"] = sa["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(sa)

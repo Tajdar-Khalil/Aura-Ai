@@ -1,6 +1,6 @@
-from __future__ import annotations
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 from crewai import Agent, Crew, LLM, Process, Task
 
@@ -8,18 +8,23 @@ from memory import ConversationMemory
 from tools import build_tools
 
 BASE_DIR = Path(__file__).resolve().parent
-SYSTEM_PROMPT = (BASE_DIR / "system_prompt.txt").read_text(encoding="utf-8")
+load_dotenv(BASE_DIR / ".env")
 
-MODEL = "groq/openai/gpt-oss-120b"
+SYSTEM_PROMPT = (BASE_DIR / "system_prompt.txt").read_text(encoding="utf-8")
+MODEL = os.getenv("GROQ_MODEL", "groq/openai/gpt-oss-120b")
 
 
 def _build_llm() -> LLM:
-    return LLM(
-        model=MODEL,
-        temperature=0.2,
-        max_tokens=3000,
-        timeout=90,
-    )
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    kwargs = {
+        "model": MODEL,
+        "temperature": 0.2,
+        "max_tokens": 3000,
+        "timeout": 90,
+    }
+    if api_key:
+        kwargs["api_key"] = api_key
+    return LLM(**kwargs)
 
 
 def _build_agent() -> Agent:

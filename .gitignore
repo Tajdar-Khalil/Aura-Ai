@@ -6,7 +6,15 @@ venv/
 .streamlit/secrets.toml
 .DS_Store
 
-# Firebase service account keys — NEVER commit these
+# Databases
+*.db
+*.sqlite3
+data/*.db
+
+# Firebase service account keys and credentials — NEVER commit these
 firebase_credentials.json
-firebase_credentials.json.json
+firebase_credentials*.json
+firebase_service_account*.json
 *firebase-adminsdk*.json
+secrets.toml
+

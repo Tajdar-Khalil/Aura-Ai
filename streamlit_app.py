@@ -22,31 +22,26 @@ st.set_page_config(
 # 2. Inject CSS to hide all default Streamlit chrome & padding
 st.markdown("""
 <style>
-    #MainMenu, header, footer, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+    /* Hide Streamlit default chrome */
+    #MainMenu, header[data-testid="stHeader"], footer, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
     }
-    .main, .block-container {
+    .stApp {
+        background: #030a1f !important;
+    }
+    [data-testid="stAppViewContainer"], .main, .block-container {
         padding: 0 !important;
         margin: 0 !important;
         max-width: 100% !important;
-        height: 100vh !important;
-        overflow: hidden !important;
-    }
-    div[data-testid="stVerticalBlock"] {
-        gap: 0 !important;
     }
     iframe {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
+        width: 100% !important;
         height: 100vh !important;
+        min-height: 100vh !important;
         border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        z-index: 999999 !important;
+        display: block !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -60,91 +55,141 @@ if not groq_key or "your_" in groq_key.lower():
     except Exception:
         pass
 
-# 4. Determine Active Page from Query Parameters
-try:
-    current_page = st.query_params.get("page", "index").lower().strip()
-except Exception:
-    current_page = "index"
 
-PAGE_MAP = {
-    "index": "index.html",
-    "home": "index.html",
-    "": "index.html",
-    "dashboard": "dashboard.html",
-    "signin": "signin.html",
-    "login": "signin.html",
-    "signup": "signup.html",
-    "register": "signup.html",
-    "about": "about.html",
-    "contact": "contact.html",
-}
+def get_unified_html(api_key: str) -> str:
+    idx_path = BASE_DIR / "index.html"
+    dash_path = BASE_DIR / "dashboard.html"
+    auth_js_path = BASE_DIR / "static" / "js" / "aura_auth.js"
 
-target_file = PAGE_MAP.get(current_page, "index.html")
-html_path = BASE_DIR / target_file
-if not html_path.exists():
-    html_path = BASE_DIR / "templates" / target_file
-if not html_path.exists():
-    html_path = BASE_DIR / "index.html"
+    idx_html = idx_path.read_text(encoding="utf-8")
+    dash_html = dash_path.read_text(encoding="utf-8")
+    auth_js = auth_js_path.read_text(encoding="utf-8") if auth_js_path.exists() else ""
 
-html_content = html_path.read_text(encoding="utf-8")
+    # Inlining avatar
+    av_path = BASE_DIR / "assets" / "aura_avatar.jpg"
+    if not av_path.exists():
+        av_path = BASE_DIR / "aura_avatar.jpg"
 
-# 5. Inline Avatar Image as Base64 Data URI
-avatar_path = BASE_DIR / "assets" / "aura_avatar.jpg"
-if not avatar_path.exists():
-    avatar_path = BASE_DIR / "aura_avatar.jpg"
+    av_uri = "assets/aura_avatar.jpg"
+    if av_path.exists():
+        av_uri = "data:image/jpeg;base64," + base64.b64encode(av_path.read_bytes()).decode("ascii")
 
-if avatar_path.exists():
-    avatar_b64 = base64.b64encode(avatar_path.read_bytes()).decode("ascii")
-    avatar_uri = f"data:image/jpeg;base64,{avatar_b64}"
-    html_content = html_content.replace("assets/aura_avatar.jpg", avatar_uri)
-    html_content = html_content.replace("aura_avatar.jpg", avatar_uri)
+    idx_html = idx_html.replace("assets/aura_avatar.jpg", av_uri).replace("aura_avatar.jpg", av_uri)
+    dash_html = dash_html.replace("assets/aura_avatar.jpg", av_uri).replace("aura_avatar.jpg", av_uri)
 
-# 6. Inline aura_auth.js script so it executes without separate static server
-auth_js_path = BASE_DIR / "static" / "js" / "aura_auth.js"
-if auth_js_path.exists():
-    auth_js_code = auth_js_path.read_text(encoding="utf-8")
-    inline_script = f"<script>\n{auth_js_code}\n</script>"
-    html_content = html_content.replace('<script src="static/js/aura_auth.js"></script>', inline_script)
-    html_content = html_content.replace("<script src='static/js/aura_auth.js'></script>", inline_script)
+    # Extract styles
+    idx_styles = "\n".join(re.findall(r"<style>([\s\S]*?)</style>", idx_html))
+    dash_styles = "\n".join(re.findall(r"<style>([\s\S]*?)</style>", dash_html))
 
-# 7. Inject Global Config (Groq API Key + Navigation Bridge)
-bridge_script = f"""
+    # Extract index body
+    idx_body_match = re.search(r"<body>([\s\S]*?)<script src=[\"']static/js/aura_auth.js[\"']>", idx_html)
+    if not idx_body_match:
+        idx_body_match = re.search(r"<body>([\s\S]*?)<script>", idx_html)
+    idx_body = idx_body_match.group(1) if idx_body_match else ""
+
+    # Extract index scripts
+    idx_scripts = "\n".join(re.findall(r"<script>([\s\S]*?)</script>", idx_html))
+
+    # Extract dashboard body
+    dash_body_match = re.search(r"<body>([\s\S]*?)<script>", dash_html)
+    dash_body = dash_body_match.group(1) if dash_body_match else ""
+
+    # Extract dashboard scripts
+    dash_scripts = "\n".join(re.findall(r"<script>([\s\S]*?)</script>", dash_html))
+
+    # SPA routing replacements
+    idx_scripts = idx_scripts.replace("window.location.href = 'dashboard.html'", "window.navigateTo('dashboard')")
+    dash_scripts = dash_scripts.replace("window.location.href = 'index.html'", "window.navigateTo('home')")
+    auth_js = auth_js.replace("window.location.href = 'dashboard.html'", "window.navigateTo('dashboard')")
+    auth_js = auth_js.replace("window.location.href = 'index.html'", "window.navigateTo('home')")
+    auth_js = auth_js.replace("window.location.href = 'signin.html'", "window.navigateTo('home')")
+
+    dash_body = dash_body.replace('href="index.html"', 'href="javascript:window.navigateTo(\'home\')"')
+    idx_body = idx_body.replace('href="dashboard.html"', 'href="javascript:window.navigateTo(\'dashboard\')"')
+
+    unified = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuraAI | AI Career &amp; Skills Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+{idx_styles}
+{dash_styles}
+</style>
+</head>
+<body>
+
+<div id="viewPublic" style="display: block;">
+{idx_body}
+</div>
+
+<div id="viewDashboard" style="display: none; height: 100vh; flex-direction: column;">
+{dash_body}
+</div>
+
 <script>
-window.__GROQ_API_KEY__ = "{groq_key}";
+window.__GROQ_API_KEY__ = "{api_key}";
 
-// Navigation bridge: intercepts internal links to maintain state inside Streamlit
-document.addEventListener('click', function(e) {{
-    var a = e.target.closest('a');
-    if (!a) return;
-    var href = a.getAttribute('href') || '';
-    if (!href || href.startsWith('#') || href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {{
-        return;
-    }}
-    
-    var page = '';
-    if (href.includes('dashboard')) page = 'dashboard';
-    else if (href.includes('signin') || href.includes('login')) page = 'signin';
-    else if (href.includes('signup') || href.includes('register')) page = 'signup';
-    else if (href.includes('about')) page = 'about';
-    else if (href.includes('contact')) page = 'contact';
-    else if (href.includes('index') || href === '/') page = 'index';
-    
-    if (page) {{
-        e.preventDefault();
-        if (window.top && window.top !== window) {{
-            window.top.location.search = '?page=' + page;
-        }} else {{
-            window.location.search = '?page=' + page;
+window.navigateTo = function(target) {{
+    const pub = document.getElementById('viewPublic');
+    const dash = document.getElementById('viewDashboard');
+    if (target === 'dashboard') {{
+        if (pub) pub.style.display = 'none';
+        if (dash) {{
+            dash.style.display = 'flex';
+            dash.style.flexDirection = 'column';
+            dash.style.height = '100vh';
+            dash.style.overflow = 'hidden';
+        }}
+        window.scrollTo(0, 0);
+        if (window.AuraAuth && window.AuraAuth.initDashboard) {{
+            window.AuraAuth.initDashboard();
+        }}
+    }} else {{
+        if (dash) dash.style.display = 'none';
+        if (pub) {{
+            pub.style.display = 'block';
+        }}
+        window.scrollTo(0, 0);
+        if (window.AuraAuth && window.AuraAuth.updatePublicHeader) {{
+            window.AuraAuth.updatePublicHeader();
         }}
     }}
-}}, true);
+}};
 </script>
+
+<script>
+{auth_js}
+</script>
+
+<script>
+{idx_scripts}
+</script>
+
+<script>
+{dash_scripts}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {{
+    const user = (window.AuraAuth && window.AuraAuth.getUser) ? window.AuraAuth.getUser() : null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('page') === 'dashboard' || (user && user.name && params.get('page') !== 'home')) {{
+        window.navigateTo('dashboard');
+    }} else {{
+        window.navigateTo('home');
+    }}
+}});
+</script>
+</body>
+</html>
 """
+    return unified
 
-if "</head>" in html_content:
-    html_content = html_content.replace("</head>", f"{bridge_script}\n</head>")
-else:
-    html_content = bridge_script + html_content
 
-# 8. Render the Full Modern Glassmorphism Web App in Streamlit
-components.html(html_content, height=1000, scrolling=True)
+app_html = get_unified_html(groq_key)
+components.html(app_html, height=1000, scrolling=True)

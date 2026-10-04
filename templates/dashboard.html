@@ -442,13 +442,43 @@ async function send(q, humanApproved = false) {
   msgs.scrollTop = msgs.scrollHeight;
 
   try {
+    let replyText = '';
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: q, human_approved: humanApproved })
-    });
-    const data = await res.json();
-    let replyText = data.reply || reply(q);
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json();
+      replyText = data.reply || '';
+    } else if (window.__GROQ_API_KEY__ && window.__GROQ_API_KEY__.length > 10 && !window.__GROQ_API_KEY__.includes('your_')) {
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.__GROQ_API_KEY__
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends using clean markdown.' },
+            { role: 'user', content: q }
+          ],
+          temperature: 0.3,
+          max_tokens: 1500
+        })
+      }).catch(() => null);
+
+      if (groqRes && groqRes.ok) {
+        const groqData = await groqRes.json();
+        replyText = groqData.choices?.[0]?.message?.content || '';
+      }
+    }
+
+    if (!replyText) {
+      replyText = reply(q);
+    }
 
     // Format basic markdown bold and bullet points
     let formatted = replyText

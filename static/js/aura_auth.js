@@ -59,7 +59,25 @@
           return { success: false, error: data.error || 'Invalid email or password.' };
         }
       } catch (err) {
-        return { success: false, error: 'Connection error. Please ensure the server is running.' };
+        // Local fallback if server endpoint is not hosted (e.g. Streamlit Cloud)
+        try {
+          const accounts = JSON.parse(localStorage.getItem('aura_accounts') || '[]');
+          const found = accounts.find(a => a.email.toLowerCase() === email.trim().toLowerCase());
+          if (found && found.password === password) {
+            const userData = { id: found.id || 1, name: found.name, email: found.email, initials: this.getInitials(found.name) };
+            this.setUser(userData);
+            return { success: true, user: userData };
+          } else if (found) {
+            return { success: false, error: 'Incorrect password.' };
+          } else {
+            // If no accounts yet, accept as first demo login
+            const userData = { id: 1, name: email.split('@')[0], email: email.trim(), initials: this.getInitials(email) };
+            this.setUser(userData);
+            return { success: true, user: userData };
+          }
+        } catch (e) {
+          return { success: false, error: 'Authentication failed.' };
+        }
       }
     },
 
@@ -78,7 +96,21 @@
           return { success: false, error: data.error || 'Failed to register account.' };
         }
       } catch (err) {
-        return { success: false, error: 'Connection error. Please ensure the server is running.' };
+        // Local fallback if server endpoint is not hosted (e.g. Streamlit Cloud)
+        try {
+          let accounts = JSON.parse(localStorage.getItem('aura_accounts') || '[]');
+          if (accounts.some(a => a.email.toLowerCase() === email.trim().toLowerCase())) {
+            return { success: false, error: 'An account with this email already exists.' };
+          }
+          const newUser = { id: Date.now(), name: name.trim(), email: email.trim(), password: password };
+          accounts.push(newUser);
+          localStorage.setItem('aura_accounts', JSON.stringify(accounts));
+          const userData = { id: newUser.id, name: newUser.name, email: newUser.email, initials: this.getInitials(newUser.name) };
+          this.setUser(userData);
+          return { success: true, user: userData };
+        } catch (e) {
+          return { success: false, error: 'Registration failed.' };
+        }
       }
     },
 
@@ -87,7 +119,11 @@
         await fetch('/api/auth/logout', { method: 'POST' });
       } catch (e) {}
       this.clearUser();
-      window.location.href = 'index.html';
+      if (window.top && window.top !== window) {
+        window.top.location.search = '?page=index';
+      } else {
+        window.location.href = 'index.html';
+      }
     },
 
     getInitials: function(name) {

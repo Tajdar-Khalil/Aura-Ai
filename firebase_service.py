@@ -60,8 +60,9 @@ def _init_admin() -> bool:
             cred = credentials.Certificate(str(json_path))
             firebase_admin.initialize_app(cred)
             return True
-        elif hasattr(st, "secrets") and "firebase" in st.secrets:
-            sa = dict(st.secrets["firebase"])
+        elif hasattr(st, "secrets") and ("firebase" in st.secrets or "firebase_service_account" in st.secrets):
+            raw_sa = st.secrets["firebase"] if "firebase" in st.secrets else st.secrets["firebase_service_account"]
+            sa = dict(raw_sa)
             if "private_key" in sa and isinstance(sa["private_key"], str):
                 sa["private_key"] = sa["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(sa)

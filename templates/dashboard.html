@@ -470,26 +470,34 @@ async function send(q, humanApproved = false) {
       const data = await res.json();
       replyText = data.reply || '';
     } else if (window.__GROQ_API_KEY__ && window.__GROQ_API_KEY__.length > 10 && !window.__GROQ_API_KEY__.includes('your_')) {
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + window.__GROQ_API_KEY__
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends using clean markdown.' },
-            { role: 'user', content: q }
-          ],
-          temperature: 0.3,
-          max_tokens: 1500
-        })
-      }).catch(() => null);
+      const modelsToTry = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile'];
+      for (const modelName of modelsToTry) {
+        try {
+          const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + window.__GROQ_API_KEY__
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                { role: 'system', content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends using clean markdown.' },
+                { role: 'user', content: q }
+              ],
+              temperature: 0.3,
+              max_tokens: 1500
+            })
+          });
 
-      if (groqRes && groqRes.ok) {
-        const groqData = await groqRes.json();
-        replyText = groqData.choices?.[0]?.message?.content || '';
+          if (groqRes && groqRes.ok) {
+            const groqData = await groqRes.json();
+            replyText = groqData.choices?.[0]?.message?.content || '';
+            if (replyText) break;
+          }
+        } catch (e) {
+          console.warn('Groq model failed:', modelName, e);
+        }
       }
     }
 

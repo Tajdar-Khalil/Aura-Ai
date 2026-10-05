@@ -184,21 +184,29 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
 }
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Distinct Tab Switching Styles */
+.tab-pane {
+  display: none !important;
+}
+.tab-pane.active {
+  display: block !important;
+}
 </style>
 </head>
 <body>
 
 <header id="siteHeader">
   <div class="wrap bar">
-    <a class="brand" href="#home" aria-label="AuraAI home">
+    <a class="brand" href="javascript:void(0)" onclick="switchTab('home')" aria-label="AuraAI home">
       <svg viewBox="0 0 24 24" fill="#3aa0ff"><path d="M12 1.5c.6 5.2 2.6 8.1 5.6 9.2 1.5.5 3.1.8 5 1.3-4.6 1-7.4 2.6-9 5.4-.7 1.2-1.2 3-1.6 5.6-.4-2.6-.9-4.4-1.6-5.6-1.6-2.8-4.4-4.4-9-5.4 1.9-.5 3.5-.8 5-1.3 3-1.1 5-4 5.6-9.2z" transform="translate(0 -.3)"/></svg>
       <b>Aura<span>AI</span></b><i>AI Career &amp; Skills Navigator</i>
     </a>
     <button class="menu" id="menu" aria-label="Toggle menu" aria-expanded="false">&#9776;</button>
     <nav id="nav">
-      <a class="link active" href="#home">Home</a>
-      <a class="link" href="#about">About</a>
-      <a class="link" href="#contact">Contact</a>
+      <a class="link active" href="javascript:void(0)" onclick="switchTab('home')">Home</a>
+      <a class="link" href="javascript:void(0)" onclick="switchTab('about')">About</a>
+      <a class="link" href="javascript:void(0)" onclick="switchTab('contact')">Contact</a>
       <div class="nav-actions">
         <a class="btn" href="#" data-route="login">Login</a>
         <a class="btn primary" href="#" data-route="register">Register</a>
@@ -207,7 +215,7 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   </div>
 </header>
 
-<main id="home" style="padding-top:72px">
+<main id="home" class="tab-pane active" style="padding-top:72px">
   <div class="wrap">
     <div class="hero">
       <div>
@@ -234,7 +242,7 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   </div>
 </main>
 
-<section class="block" id="about">
+<section class="block tab-pane" id="about" style="padding-top:84px">
   <div class="wrap">
     <h2>About AuraAI</h2>
     <p class="sub">Aura is an AI agent that reasons about your goals, retrieves relevant knowledge, uses tools, and checks with you before important decisions.</p>
@@ -246,7 +254,7 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   </div>
 </section>
 
-<section class="block" id="contact">
+<section class="block tab-pane" id="contact" style="padding-top:84px">
   <div class="wrap contact-grid">
     <div>
       <h2>Contact us</h2>
@@ -270,7 +278,9 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   <div class="wrap foot">
     <span>&copy; <span id="yr">2026</span> AuraAI. All rights reserved.</span>
     <nav>
-      <a href="#home">Home</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="javascript:void(0)" onclick="switchTab('home')">Home</a>
+      <a href="javascript:void(0)" onclick="switchTab('about')">About</a>
+      <a href="javascript:void(0)" onclick="switchTab('contact')">Contact</a>
     </nav>
   </div>
 </footer>
@@ -328,17 +338,30 @@ menu.addEventListener('click', () => {
 });
 nav.addEventListener('click', e => { if (e.target.closest('a')) nav.classList.remove('open'); });
 
-// Highlight the nav button for the section in view
-const links = [...document.querySelectorAll('nav a.link')];
-const targets = ['home','about','contact'].map(id => document.getElementById(id));
-const io = new IntersectionObserver(entries => {
-  entries.forEach(en => {
-    if (en.isIntersecting) {
-      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + en.target.id));
+// Explicit Tab Switching (Home, About, Contact)
+window.switchTab = function(tabName) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById(tabName);
+  if (target) {
+    target.classList.add('active');
+  }
+  document.querySelectorAll('#nav a.link, footer nav a').forEach(a => {
+    const oc = a.getAttribute('onclick') || '';
+    if (oc.includes("'" + tabName + "'")) {
+      a.classList.add('active');
+    } else {
+      a.classList.remove('active');
     }
   });
-}, { rootMargin: '-45% 0px -50% 0px' });
-targets.forEach(t => io.observe(t));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Check auth and update header on load
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.AuraAuth && window.AuraAuth.updatePublicHeader) {
+    window.AuraAuth.updatePublicHeader();
+  }
+});
 
 // ---- Login / Register popup ----
 const overlay = document.getElementById('overlay');

@@ -57,8 +57,14 @@ st.markdown("""
 groq_key = os.getenv("GROQ_API_KEY", "").strip()
 if not groq_key or "your_" in groq_key.lower():
     try:
-        if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-            groq_key = str(st.secrets["GROQ_API_KEY"]).strip()
+        if hasattr(st, "secrets"):
+            if "GROQ_API_KEY" in st.secrets:
+                groq_key = str(st.secrets["GROQ_API_KEY"]).strip()
+            elif "groq_api_key" in st.secrets:
+                groq_key = str(st.secrets["groq_api_key"]).strip()
+            elif "GROQ" in st.secrets:
+                g_sec = st.secrets["GROQ"]
+                groq_key = str(getattr(g_sec, "get", lambda k, d="": d)("api_key", "")).strip()
     except Exception:
         pass
 

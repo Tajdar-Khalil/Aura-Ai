@@ -257,6 +257,10 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
   </div>
   <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Open dashboard menu" aria-expanded="false">☰</button>
   <div class="tools">
+    <button type="button" id="apiKeyStatusBtn" class="api-key-status-btn" onclick="window.openApiKeyModal()" title="Groq AI Engine Connection Status" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.2s;border:1px solid rgba(77,140,255,0.3);background:rgba(14,165,233,0.12);color:#7dd3fc;">
+      <span id="apiKeyDot" style="width:7px;height:7px;border-radius:50%;background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span>
+      <span id="apiKeyText">AI Connected</span>
+    </button>
     <div class="bell-wrapper" id="bellWrapper">
       <button class="bell" id="bellBtn" aria-label="Notifications" title="View notifications">
         <svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4zM10 21h4"/></svg>
@@ -337,7 +341,8 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
     <button><span>◇</span>Skills</button>
     <button><span>▣</span>Opportunities</button>
     <button><span>▤</span>Resources</button>
-    <button type="button" onclick="window.navigateTo('home')" style="color:#7db8ff; border-color:rgba(77,140,255,0.3); background:rgba(31,139,255,0.1); margin-top:8px;"><span>⌂</span>Return to Home</button>
+    <button type="button" onclick="window.openApiKeyModal()" style="color:#7dd3fc; border-color:rgba(14,165,233,0.3); background:rgba(14,165,233,0.1); margin-top:8px;"><span>🔑</span>Connect Live AI</button>
+    <button type="button" onclick="window.navigateTo('home')" style="color:#7db8ff; border-color:rgba(77,140,255,0.3); background:rgba(31,139,255,0.1); margin-top:6px;"><span>⌂</span>Return to Home</button>
     <button type="button" onclick="window.logout()" style="color:#fca5a5; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.1); margin-top:6px;"><span>⏻</span>Sign Out</button>
   </nav>
   <div class="mobile-progress"><b>Your Progress</b><div><span style="width:68%"></span></div><small>68% · Career Growth Journey</small></div>
@@ -664,6 +669,40 @@ function formatAuraMarkdown(text) {
   return finalHtml;
 }
 
+function getGroqApiKey() {
+  if (window.__GROQ_API_KEY__ && window.__GROQ_API_KEY__.length > 10 && !window.__GROQ_API_KEY__.includes('your_')) {
+    return window.__GROQ_API_KEY__.trim();
+  }
+  const stored = localStorage.getItem('aura_groq_key') || localStorage.getItem('GROQ_API_KEY');
+  if (stored && stored.trim().length > 10 && !stored.trim().includes('your_')) {
+    return stored.trim();
+  }
+  return '';
+}
+
+function updateApiKeyUI() {
+  const dot = document.getElementById('apiKeyDot');
+  const txt = document.getElementById('apiKeyText');
+  const btn = document.getElementById('apiKeyStatusBtn');
+  const key = getGroqApiKey();
+  if (!dot || !txt || !btn) return;
+  if (key) {
+    dot.style.background = '#22c55e';
+    dot.style.boxShadow = '0 0 8px #22c55e';
+    txt.textContent = 'AI Live (Groq)';
+    btn.style.borderColor = 'rgba(34,197,94,0.4)';
+    btn.style.color = '#86efac';
+    btn.style.background = 'rgba(34,197,94,0.12)';
+  } else {
+    dot.style.background = '#f59e0b';
+    dot.style.boxShadow = '0 0 8px #f59e0b';
+    txt.textContent = 'Connect Live AI';
+    btn.style.borderColor = 'rgba(245,158,11,0.4)';
+    btn.style.color = '#fde68a';
+    btn.style.background = 'rgba(245,158,11,0.12)';
+  }
+}
+
 async function send(q, humanApproved = false) {
   q = q.trim(); if (!q) return;
   addRecentChat(q);
@@ -673,6 +712,9 @@ async function send(q, humanApproved = false) {
 
   try {
     let replyText = '';
+    let apiError = '';
+    
+    // 1. Try local / backend /api/chat if available
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -681,16 +723,35 @@ async function send(q, humanApproved = false) {
 
     if (res && res.ok) {
       const data = await res.json();
-      replyText = data.reply || '';
-    } else if (window.__GROQ_API_KEY__ && window.__GROQ_API_KEY__.length > 10 && !window.__GROQ_API_KEY__.includes('your_')) {
-      const modelsToTry = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile'];
+      if (data && data.reply && !data.needs_key) {
+        replyText = data.reply;
+      }
+    }
+
+    // 2. Direct Groq API call from browser
+    if (!replyText) {
+      const apiKey = getGroqApiKey();
+      if (!apiKey) {
+        const helpNotice = 
+          '✦ **Live Groq AI Engine Setup Required**\n\n' +
+          'Aura is running on a live server, but no active Groq API Key was detected.\n\n' +
+          '• **If deployed on Streamlit Cloud:** Add `GROQ_API_KEY = "gsk_..."` to **App Settings ➔ Secrets**.\n' +
+          '• **Direct Browser Access:** Click **Connect Live AI** below to paste your free Groq API key (saved securely in your browser).\n\n' +
+          '<div style="margin-top:10px;"><button type="button" onclick="window.openApiKeyModal()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:linear-gradient(135deg,#258cff,#0ea5e9);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.86rem;cursor:pointer;box-shadow:0 4px 15px rgba(37,140,255,0.4);">🔑 Connect Groq API Key</button> <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style="font-size:0.84rem;color:#38bdf8;margin-left:10px;text-decoration:none;">Get free key ↗</a></div>';
+        
+        typing.querySelector('.bub').innerHTML = formatAuraMarkdown(helpNotice) + '<time>' + time() + '</time>';
+        msgs.scrollTop = msgs.scrollHeight;
+        return;
+      }
+
+      const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
       for (const modelName of modelsToTry) {
         try {
           const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + window.__GROQ_API_KEY__
+              'Authorization': 'Bearer ' + apiKey
             },
             body: JSON.stringify({
               model: modelName,
@@ -702,23 +763,35 @@ async function send(q, humanApproved = false) {
                 { role: 'user', content: q }
               ],
               temperature: 0.3,
-              max_tokens: 1500
+              max_tokens: 1800
             })
           });
 
           if (groqRes && groqRes.ok) {
             const groqData = await groqRes.json();
-            replyText = groqData.choices?.[0]?.message?.content || '';
+            replyText = groqData.choices?.[0]?.message?.content || groqData.choices?.[0]?.message?.reasoning || '';
             if (replyText) break;
+          } else if (groqRes) {
+            const errJson = await groqRes.json().catch(() => ({}));
+            apiError = errJson.error?.message || ('HTTP ' + groqRes.status + ' ' + groqRes.statusText);
+            console.warn('Groq model failed:', modelName, apiError);
           }
         } catch (e) {
+          apiError = e.message || String(e);
           console.warn('Groq model failed:', modelName, e);
         }
       }
     }
 
     if (!replyText) {
-      replyText = reply(q);
+      if (apiError) {
+        replyText = '⚠️ **Groq API Error on Live Deployment:**\n\n' + apiError + '\n\n' +
+          '• Please verify your API key or quota.\n' +
+          '• Click the button below to update your key.\n\n' +
+          '<button type="button" onclick="window.openApiKeyModal()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:8px;font-weight:600;font-size:0.84rem;cursor:pointer;">🔑 Update Groq API Key</button>';
+      } else {
+        replyText = reply(q);
+      }
     }
 
     const formatted = formatAuraMarkdown(replyText);
@@ -905,6 +978,125 @@ if (userMenuBtn && userDropdown) {
 }
 
 msgs.scrollTop = 0;
+
+// --- API Key Modal & Controller Logic ---
+window.openApiKeyModal = function() {
+  const modal = document.getElementById('apiKeyModal');
+  const input = document.getElementById('groqKeyInput');
+  const msg = document.getElementById('apiKeyValidationMsg');
+  if (modal) modal.style.display = 'flex';
+  if (input) {
+    input.value = getGroqApiKey();
+    input.focus();
+  }
+  if (msg) {
+    msg.style.color = '#94a3b8';
+    msg.textContent = "Stored securely in your browser's localStorage.";
+  }
+};
+
+window.closeApiKeyModal = function() {
+  const modal = document.getElementById('apiKeyModal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.testApiKeyConnection = async function() {
+  const input = document.getElementById('groqKeyInput');
+  const msg = document.getElementById('apiKeyValidationMsg');
+  const key = (input ? input.value : '').trim();
+  if (!key || key.length < 10) {
+    if (msg) {
+      msg.style.color = '#f87171';
+      msg.textContent = 'Please enter a valid Groq API key (starts with gsk_).';
+    }
+    return;
+  }
+  if (msg) {
+    msg.style.color = '#38bdf8';
+    msg.textContent = 'Testing connection with Groq API...';
+  }
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      },
+      body: JSON.stringify({
+        model: 'qwen/qwen3.8-27b',
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5
+      })
+    });
+    if (res.ok) {
+      if (msg) {
+        msg.style.color = '#4ade80';
+        msg.textContent = '✓ Connected successfully! Click Save & Activate.';
+      }
+    } else {
+      const err = await res.json().catch(() => ({}));
+      if (msg) {
+        msg.style.color = '#f87171';
+        msg.textContent = '✗ ' + (err.error?.message || ('HTTP ' + res.status));
+      }
+    }
+  } catch (e) {
+    if (msg) {
+      msg.style.color = '#f87171';
+      msg.textContent = '✗ Connection error: ' + e.message;
+    }
+  }
+};
+
+window.saveApiKey = function() {
+  const input = document.getElementById('groqKeyInput');
+  const key = (input ? input.value : '').trim();
+  if (key) {
+    localStorage.setItem('aura_groq_key', key);
+    window.__GROQ_API_KEY__ = key;
+  } else {
+    localStorage.removeItem('aura_groq_key');
+    window.__GROQ_API_KEY__ = '';
+  }
+  updateApiKeyUI();
+  window.closeApiKeyModal();
+};
+
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('apiKeyModal');
+  if (modal && e.target === modal) {
+    window.closeApiKeyModal();
+  }
+});
+
+// Update API key status badge on page load
+updateApiKeyUI();
 </script>
+
+<!-- Live API Key Configuration Modal -->
+<div id="apiKeyModal" style="display:none;position:fixed;inset:0;background:rgba(3,10,31,0.85);backdrop-filter:blur(8px);z-index:999999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#07163a;border:1px solid rgba(85,155,255,0.4);border-radius:18px;max-width:480px;width:100%;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.8);color:#e2e8f0;position:relative;">
+    <button type="button" onclick="window.closeApiKeyModal()" style="position:absolute;top:18px;right:18px;background:none;border:none;color:#94a3b8;font-size:1.5rem;cursor:pointer;line-height:1;">×</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <span style="font-size:1.4rem;background:rgba(37,140,255,0.2);padding:8px 12px;border-radius:12px;color:#38bdf8;">🔑</span>
+      <div>
+        <h3 style="margin:0;font-size:1.15rem;color:#fff;font-weight:700;">Connect Live Groq AI</h3>
+        <p style="margin:3px 0 0;font-size:0.8rem;color:#94a3b8;">Enable live, real-time AI reasoning on this deployment</p>
+      </div>
+    </div>
+    <div style="margin:18px 0;">
+      <label style="display:block;font-size:0.84rem;font-weight:600;color:#cbd5e1;margin-bottom:6px;">Groq API Key</label>
+      <input type="password" id="groqKeyInput" placeholder="gsk_..." style="width:100%;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(85,155,255,0.35);color:#fff;font-size:0.92rem;outline:none;box-sizing:border-box;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+        <span id="apiKeyValidationMsg" style="font-size:0.8rem;color:#94a3b8;">Stored securely in your browser's localStorage.</span>
+        <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem;color:#38bdf8;text-decoration:none;">Get free API key ↗</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">
+      <button type="button" id="btnTestApiKey" onclick="window.testApiKeyConnection()" style="padding:9px 15px;border-radius:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;cursor:pointer;font-size:0.86rem;font-weight:500;">Test Connection</button>
+      <button type="button" onclick="window.saveApiKey()" style="padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#258cff,#0ea5e9);border:none;color:#fff;cursor:pointer;font-size:0.86rem;font-weight:600;box-shadow:0 4px 15px rgba(37,140,255,0.4);">Save &amp; Activate</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

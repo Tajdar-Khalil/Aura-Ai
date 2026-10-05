@@ -403,22 +403,24 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
 <script src="static/js/aura_auth.js"></script>
 <script>
 // Check authentication
-const activeUser = AuraAuth.getUser();
+const activeUser = (window.AuraAuth && window.AuraAuth.getUser) ? AuraAuth.getUser() : null;
 if (!activeUser || !activeUser.name) {
-  // Try checking server session
-  fetch('/api/auth/me')
-    .then(r => r.json())
-    .then(data => {
-      if (data.authenticated && data.user) {
-        AuraAuth.setUser(data.user);
-        window.location.reload();
-      } else {
+  if (typeof window.navigateTo !== 'function') {
+    // Try checking server session in multi-page mode
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated && data.user) {
+          AuraAuth.setUser(data.user);
+          window.location.reload();
+        } else {
+          window.location.href = 'signin.html';
+        }
+      })
+      .catch(() => {
         window.location.href = 'signin.html';
-      }
-    })
-    .catch(() => {
-      window.location.href = 'signin.html';
-    });
+      });
+  }
 }
 
 const USER = (activeUser && activeUser.name) ? activeUser.name : 'User';

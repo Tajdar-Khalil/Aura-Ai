@@ -557,6 +557,17 @@ function showNotice(title, text, btnText) {
 document.querySelectorAll('[data-route]').forEach(a =>
   a.addEventListener('click', e => {
     e.preventDefault();
+    if (a.dataset.route === 'chat') {
+      const u = (window.AuraAuth && window.AuraAuth.getUser) ? window.AuraAuth.getUser() : null;
+      if (u && u.name) {
+        if (typeof window.navigateTo === 'function') {
+          window.navigateTo('dashboard');
+        } else {
+          window.location.href = 'dashboard.html';
+        }
+        return;
+      }
+    }
     openModal(a.dataset.route === 'register' ? 'register' : 'login');
   }));
 
@@ -629,7 +640,12 @@ document.getElementById('paneLogin').addEventListener('submit', async e => {
 
   showNotice('Welcome back, ' + (res.user.name.split(' ')[0] || 'User') + '!', 'Authentication verified against database. Loading your dashboard...', 'Enter Dashboard');
   setTimeout(() => {
-    window.location.href = 'dashboard.html';
+    if (typeof window.navigateTo === 'function') {
+      closeModal();
+      window.navigateTo('dashboard');
+    } else {
+      window.location.href = 'dashboard.html';
+    }
   }, 900);
 });
 
@@ -653,13 +669,27 @@ document.getElementById('paneRegister').addEventListener('submit', async e => {
 
   showNotice('Account Created Successfully!', 'Welcome ' + (res.user.name || '') + '! Saved to database. Loading your dashboard...', 'Enter Dashboard');
   setTimeout(() => {
-    window.location.href = 'dashboard.html';
+    if (typeof window.navigateTo === 'function') {
+      closeModal();
+      window.navigateTo('dashboard');
+    } else {
+      window.location.href = 'dashboard.html';
+    }
   }, 900);
 });
 
 document.getElementById('nBtn').addEventListener('click', e => {
-  if (e.target.dataset.next === 'login') { e.target.dataset.next = ''; openModal('login'); }
-  else window.location.href = 'dashboard.html';
+  if (e.target.dataset.next === 'login') {
+    e.target.dataset.next = '';
+    openModal('login');
+  } else {
+    if (typeof window.navigateTo === 'function') {
+      closeModal();
+      window.navigateTo('dashboard');
+    } else {
+      window.location.href = 'dashboard.html';
+    }
+  }
 });
 document.getElementById('forgot').addEventListener('click', e => {
   e.preventDefault();

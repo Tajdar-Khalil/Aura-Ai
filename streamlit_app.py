@@ -107,12 +107,14 @@ def get_unified_html(api_key: str) -> str:
     # SPA routing replacements
     idx_scripts = idx_scripts.replace("window.location.href = 'dashboard.html'", "window.navigateTo('dashboard')")
     dash_scripts = dash_scripts.replace("window.location.href = 'index.html'", "window.navigateTo('home')")
+    dash_scripts = dash_scripts.replace("window.location.href = 'signin.html'", "window.navigateTo('home')")
     auth_js = auth_js.replace("window.location.href = 'dashboard.html'", "window.navigateTo('dashboard')")
     auth_js = auth_js.replace("window.location.href = 'index.html'", "window.navigateTo('home')")
     auth_js = auth_js.replace("window.location.href = 'signin.html'", "window.navigateTo('home')")
 
     dash_body = dash_body.replace('href="index.html"', 'href="javascript:window.navigateTo(\'home\')"')
     idx_body = idx_body.replace('href="dashboard.html"', 'href="javascript:window.navigateTo(\'dashboard\')"')
+    auth_js = auth_js.replace('href="dashboard.html"', 'href="javascript:window.navigateTo(\'dashboard\')"')
 
     unified = f"""<!DOCTYPE html>
 <html lang="en">
@@ -186,6 +188,18 @@ window.navigateTo = function(target) {{
     const dash = document.getElementById('viewDashboard');
 
     if (target === 'dashboard') {{
+        // If modal was open, close it
+        if (typeof closeModal === 'function') {{
+            closeModal();
+        }} else {{
+            const ov = document.getElementById('overlay');
+            if (ov) {{
+                ov.classList.remove('show');
+                ov.setAttribute('aria-hidden', 'true');
+            }}
+        }}
+        document.body.style.overflow = '';
+
         if (pub) pub.style.display = 'none';
         if (dash) {{
             dash.style.display = 'flex';
@@ -201,6 +215,7 @@ window.navigateTo = function(target) {{
         if (u && u.name) {{
             const unameEl = document.getElementById('uname');
             if (unameEl) unameEl.textContent = u.name.split(' ')[0] || u.name;
+            document.querySelectorAll('.un').forEach(e => e.textContent = u.name.split(' ')[0]);
         }}
     }} else {{
         if (dash) dash.style.display = 'none';
@@ -210,9 +225,14 @@ window.navigateTo = function(target) {{
         document.body.className = 'in-public';
         window.scrollTo(0, 0);
 
-        if (window.switchTab) {{
-            window.switchTab(target === 'about' ? 'about' : (target === 'contact' ? 'contact' : 'home'));
+        if (target === 'about' || target === 'contact') {{
+            setTimeout(() => {{
+                if (window.switchTab) window.switchTab(target);
+            }}, 50);
+        }} else {{
+            if (window.switchTab) window.switchTab('home');
         }}
+
         if (window.AuraAuth && window.AuraAuth.updatePublicHeader) {{
             window.AuraAuth.updatePublicHeader();
         }}

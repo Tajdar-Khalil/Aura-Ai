@@ -163,22 +163,21 @@ body.in-dashboard {{
 <script>
 window.__GROQ_API_KEY__ = "{api_key}";
 
-// Explicit Tab Switching for Home, About, Contact (never show all 3 together)
+// Smooth Section Navigation for Home, About, Contact
 window.switchTab = function(tabName) {{
-  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   const target = document.getElementById(tabName);
   if (target) {{
-    target.classList.add('active');
+    target.scrollIntoView({{ behavior: 'smooth' }});
   }}
   document.querySelectorAll('#nav a.link, footer nav a').forEach(a => {{
     const oc = a.getAttribute('onclick') || '';
-    if (oc.includes("'" + tabName + "'")) {{
+    const href = a.getAttribute('href') || '';
+    if (oc.includes("'" + tabName + "'") || href === '#' + tabName) {{
       a.classList.add('active');
     }} else {{
       a.classList.remove('active');
     }}
   }});
-  window.scrollTo({{ top: 0, behavior: 'smooth' }});
 }};
 
 // Seamless Page Routing between Public Site & Dashboard

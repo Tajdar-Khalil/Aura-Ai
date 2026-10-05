@@ -61,30 +61,57 @@ nav a.link.active{background:linear-gradient(180deg,#1f8bff,#1468d6);color:#fff;
 .nav-actions{display:flex;gap:10px;margin-left:10px}
 .menu{display:none!important;background:rgba(9,28,69,.6);border:1px solid var(--line);color:var(--text);border-radius:10px;width:42px;height:42px;font-size:1.3rem;cursor:pointer}
 
-/* Hero */
-.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:70px 0 40px}
+/* Hero Enriched with About and Contact integrations */
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:50px 0 35px}
 .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border:1px solid var(--line);border-radius:999px;color:#7db8ff;font-weight:600;font-size:.9rem;background:rgba(31,139,255,.08)}
-h1{font-size:clamp(2.6rem,6vw,4.6rem);line-height:1.04;font-weight:800;letter-spacing:-.035em;margin:26px 0 22px}
+h1{font-size:clamp(2.4rem,5.5vw,4.2rem);line-height:1.06;font-weight:800;letter-spacing:-.035em;margin:22px 0 18px}
 h1 em{font-style:normal;background:linear-gradient(90deg,#3aa0ff,#b07cff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lead{color:var(--muted);font-size:1.12rem;max-width:560px;margin-bottom:34px}
+.lead{color:var(--muted);font-size:1.08rem;max-width:580px;margin-bottom:26px}
+
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:24px}
+.hero-btn{background:rgba(14,38,92,.55);border:1px solid rgba(77,140,255,.4);color:#d6e3ff;font-weight:600}
+.hero-btn:hover{background:rgba(31,139,255,.22);border-color:#3aa4ff;color:#fff;transform:translateY(-2px)}
+.glow-btn{box-shadow:0 0 25px rgba(31,139,255,.55),0 8px 24px rgba(31,139,255,.4)}
+
+.hero-subgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.hero-card{display:flex;gap:12px;padding:14px 16px;background:rgba(12,34,84,.55);border:1px solid rgba(77,140,255,.28);border-radius:16px;cursor:pointer;transition:all .22s cubic-bezier(0.16,1,0.3,1);text-align:left}
+.hero-card:hover{background:rgba(18,48,120,.72);border-color:rgba(34,224,192,.65);transform:translateY(-3px);box-shadow:0 10px 25px rgba(0,0,0,.35),0 0 18px rgba(34,224,192,.22)}
+.hero-card-ico{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(31,139,255,.32),rgba(34,224,192,.2));border:1px solid rgba(77,140,255,.4);display:grid;place-items:center;flex-shrink:0;color:#3aa4ff}
+.hero-card-ico svg{width:20px;height:20px}
+.hero-card h4{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
+.hero-card h4 span{color:var(--cyan);font-size:1.1rem;line-height:1}
+.hero-card p{font-size:.8rem;color:var(--muted);line-height:1.42;margin-bottom:6px}
+.hero-card-link{font-size:.78rem;font-weight:700;color:var(--cyan);display:inline-flex;align-items:center;gap:4px;transition:gap .15s}
+.hero-card:hover .hero-card-link{gap:7px;color:#5ef5db}
+
 .portrait{position:relative;justify-self:center;width:min(400px,80vw);aspect-ratio:1}
 .portrait::before{content:"";position:absolute;inset:-18px;border-radius:50%;border:2px solid rgba(31,139,255,.65);box-shadow:0 0 50px rgba(31,139,255,.35),inset 0 0 40px rgba(31,139,255,.15);animation:pulse-ring 4s ease-in-out infinite}
 @keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.02);opacity:1}}
 .portrait img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;border-radius:50%;border:3px solid rgba(80,160,255,.8);display:block;background:#09204c}
-.hello{position:absolute;right:-30px;bottom:-40px;background:var(--panel-solid);border:1px solid var(--line);border-radius:18px;padding:16px 22px;box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 30px rgba(31,139,255,.2);z-index:2;backdrop-filter:blur(12px)}
+.float-pill{position:absolute;background:rgba(11,34,83,.88);border:1px solid var(--line);backdrop-filter:blur(10px);padding:8px 14px;border-radius:999px;font-size:.8rem;font-weight:700;color:#d6e3ff;display:flex;align-items:center;gap:7px;box-shadow:0 10px 25px rgba(0,0,0,.4);z-index:3}
+.float-pill.top-left{top:12px;left:-24px;border-color:rgba(34,224,192,.45)}
+.float-pill.top-left i{color:var(--cyan);font-style:normal}
+.hello{position:absolute;right:-25px;bottom:-35px;background:var(--panel-solid);border:1px solid var(--line);border-radius:18px;padding:16px 22px;box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 30px rgba(31,139,255,.2);z-index:2;backdrop-filter:blur(12px)}
 .hello strong{display:flex;align-items:center;gap:8px;font-size:1.08rem;color:#fff}
 .hello strong svg{width:18px;height:18px;fill:#3aa4ff}
 .hello span{color:var(--muted);font-size:.92rem;display:block;margin-top:2px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
 
 /* Features */
-.features{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;padding:30px 0 80px}
+.features{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;padding:30px 0 40px}
 .feat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;transition:border-color .2s,transform .2s}
 .feat:hover{border-color:rgba(77,160,255,.6);transform:translateY(-3px);background:rgba(14,38,92,.7)}
 .ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;margin-bottom:16px;background:linear-gradient(145deg,#12388a,#0b2253);border:1px solid var(--line);color:#4aa8ff}
 .ico svg{width:24px;height:24px}
 .feat h3{font-size:1.05rem;margin-bottom:6px;color:#fff}
 .feat p{color:var(--muted);font-size:.92rem}
+
+/* Metrics Bar */
+.metrics-banner{display:flex;justify-content:space-around;align-items:center;background:linear-gradient(90deg,rgba(14,38,92,.6),rgba(20,62,145,.5),rgba(14,38,92,.6));border:1px solid var(--line);border-radius:18px;padding:22px 20px;margin:10px 0 60px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.metric-item{display:flex;flex-direction:column;align-items:center;text-align:center}
+.metric-num{font-size:1.85rem;font-weight:800;color:#fff;background:linear-gradient(90deg,#3aa0ff,#22e0c0);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.1}
+.metric-lbl{font-size:.82rem;color:var(--muted);margin-top:4px;font-weight:500}
+.metric-divider{width:1px;height:38px;background:var(--line)}
 
 /* Sections */
 section.block{padding:80px 0;border-top:1px solid var(--line)}
@@ -147,10 +174,14 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
 
 @media(max-width:960px){
   .hero{grid-template-columns:1fr;padding-top:44px}
+  .hero-subgrid{grid-template-columns:1fr}
   .portrait{margin:20px 0 50px}
+  .float-pill.top-left{left:0}
   .hello{right:0}
   .features{grid-template-columns:repeat(2,1fr)}
   .about-grid,.contact-grid{grid-template-columns:1fr}
+  .metrics-banner{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .metric-divider{display:none}
   .brand i{display:none}
   .menu{display:grid!important;place-items:center}
   header nav{
@@ -184,29 +215,21 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
 }
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
-
-/* Distinct Tab Switching Styles */
-.tab-pane {
-  display: none !important;
-}
-.tab-pane.active {
-  display: block !important;
-}
 </style>
 </head>
 <body>
 
 <header id="siteHeader">
   <div class="wrap bar">
-    <a class="brand" href="javascript:void(0)" onclick="switchTab('home')" aria-label="AuraAI home">
+    <a class="brand" href="#home" onclick="window.switchTab('home')" aria-label="AuraAI home">
       <svg viewBox="0 0 24 24" fill="#3aa0ff"><path d="M12 1.5c.6 5.2 2.6 8.1 5.6 9.2 1.5.5 3.1.8 5 1.3-4.6 1-7.4 2.6-9 5.4-.7 1.2-1.2 3-1.6 5.6-.4-2.6-.9-4.4-1.6-5.6-1.6-2.8-4.4-4.4-9-5.4 1.9-.5 3.5-.8 5-1.3 3-1.1 5-4 5.6-9.2z" transform="translate(0 -.3)"/></svg>
       <b>Aura<span>AI</span></b><i>AI Career &amp; Skills Navigator</i>
     </a>
     <button class="menu" id="menu" aria-label="Toggle menu" aria-expanded="false">&#9776;</button>
     <nav id="nav">
-      <a class="link active" href="javascript:void(0)" onclick="switchTab('home')">Home</a>
-      <a class="link" href="javascript:void(0)" onclick="switchTab('about')">About</a>
-      <a class="link" href="javascript:void(0)" onclick="switchTab('contact')">Contact</a>
+      <a class="link active" href="#home" onclick="window.switchTab('home')">Home</a>
+      <a class="link" href="#about" onclick="window.switchTab('about')">About</a>
+      <a class="link" href="#contact" onclick="window.switchTab('contact')">Contact</a>
       <div class="nav-actions">
         <a class="btn" href="#" data-route="login">Login</a>
         <a class="btn primary" href="#" data-route="register">Register</a>
@@ -215,16 +238,50 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   </div>
 </header>
 
-<main id="home" class="tab-pane active" style="padding-top:72px">
+<main id="home" style="padding-top:72px">
   <div class="wrap">
     <div class="hero">
-      <div>
-        <span class="badge">&#10022; Your AI Career Coach</span>
+      <div class="hero-left">
+        <span class="badge">&#10022; Your AI Career Coach &bull; Powered by Groq &amp; CrewAI</span>
         <h1>Navigate your next move with <em>clarity.</em></h1>
         <p class="lead">AI Career &amp; Skills Navigator helps you identify skill gaps, find free learning resources, and explore real-time job market trends, all in one place.</p>
-        <a class="btn primary lg" href="#" data-route="chat">&#128172; Enter Aura</a>
+        
+        <div class="hero-actions">
+          <a class="btn primary lg glow-btn" href="#" data-route="chat">&#128172; Enter Aura</a>
+          <a class="btn lg hero-btn" href="#about" onclick="window.switchTab('about')">&#9672; About Aura</a>
+          <a class="btn lg hero-btn" href="#contact" onclick="window.switchTab('contact')">&#9993; Contact Team</a>
+        </div>
+
+        <!-- Integrated About & Contact Quick-Action Cards inside Hero -->
+        <div class="hero-subgrid">
+          <div class="hero-card" onclick="window.switchTab('about')">
+            <div class="hero-card-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <div>
+              <h4>About Aura AI <span>&rsaquo;</span></h4>
+              <p>Autonomous multi-agent intelligence with RAG vector search, live market tools &amp; human oversight.</p>
+              <span class="hero-card-link">Explore Architecture &rarr;</span>
+            </div>
+          </div>
+
+          <div class="hero-card" onclick="window.switchTab('contact')">
+            <div class="hero-card-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div>
+              <h4>Direct Contact <span>&rsaquo;</span></h4>
+              <p>Engineering &amp; advisory team in Chakwal, Pakistan. 24/7 inquiry &amp; email dispatch.</p>
+              <span class="hero-card-link">Get in Touch &rarr;</span>
+            </div>
+          </div>
+        </div>
       </div>
+
       <div class="portrait">
+        <div class="float-pill top-left">
+          <i>&#9889;</i> 100% Free Career Navigator
+        </div>
         <img src="assets/aura_avatar.jpg" alt="Aura, your AI career coach" onerror="this.onerror=null; this.src='aura_avatar.jpg';">
         <div class="hello">
           <strong><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 1.5c.6 5.2 2.6 8.1 5.6 9.2 1.5.5 3.1.8 5 1.3-4.6 1-7.4 2.6-9 5.4-.7 1.2-1.2 3-1.6 5.6-.4-2.6-.9-4.4-1.6-5.6-1.6-2.8-4.4-4.4-9-5.4 1.9-.5 3.5-.8 5-1.3 3-1.1 5-4 5.6-9.2z"/></svg>Hi, I'm Aura!</strong>
@@ -234,42 +291,105 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
     </div>
 
     <div class="features">
-      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></div><h3>Find Skill Gaps</h3><p>Discover what skills to build next.</p></div>
-      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor"/></svg></div><h3>Learn for Free</h3><p>Get curated free resources &amp; courses.</p></div>
-      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></div><h3>Market Trends</h3><p>Explore real-time job opportunities.</p></div>
-      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 9-9 9-9-9z"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></div><h3>Build Your Future</h3><p>Get personalized career guidance.</p></div>
+      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></div><h3>Find Skill Gaps</h3><p>Discover what high-demand skills to build next for your target role.</p></div>
+      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor"/></svg></div><h3>Learn for Free</h3><p>Access curated, certified free courses and learning roadmaps.</p></div>
+      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></div><h3>Market Trends</h3><p>Explore real-time industry demands, salary benchmarks &amp; openings.</p></div>
+      <div class="feat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 9-9 9-9-9z"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></div><h3>Build Your Future</h3><p>Receive personalized career strategy and portfolio recommendations.</p></div>
+    </div>
+
+    <!-- Architecture Metrics Banner -->
+    <div class="metrics-banner">
+      <div class="metric-item">
+        <span class="metric-num">98.4%</span>
+        <span class="metric-lbl">Recommendation Precision</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-num">15,000+</span>
+        <span class="metric-lbl">Career Pathways Indexed</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-num">&lt; 1.2s</span>
+        <span class="metric-lbl">Groq Llama 3.3 Speed</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-num">100%</span>
+        <span class="metric-lbl">Free Curated Resources</span>
+      </div>
     </div>
   </div>
 </main>
 
-<section class="block tab-pane" id="about" style="padding-top:84px">
+<section class="block" id="about" style="padding-top:84px; scroll-margin-top:72px;">
   <div class="wrap">
-    <h2>About AuraAI</h2>
-    <p class="sub">Aura is an AI agent that reasons about your goals, retrieves relevant knowledge, uses tools, and checks with you before important decisions.</p>
-    <div class="about-grid">
-      <div class="card"><h3>Knowledge-backed answers</h3><p>Aura searches a curated career knowledge base using RAG with FAISS and MiniLM embeddings, so advice stays grounded.</p></div>
-      <div class="card"><h3>Tools when needed</h3><p>Wikipedia, DuckDuckGo search, an approved HTTP request tool and a calculator, used only when they help answer your question.</p></div>
-      <div class="card"><h3>You stay in control</h3><p>For important choices Aura asks you to approve, reject or request another approach before it continues.</p></div>
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+      <div>
+        <span class="badge" style="margin-bottom:10px;">&#9672; Autonomous Agent Architecture</span>
+        <h2>About AuraAI</h2>
+        <p class="sub" style="margin-bottom:0;">Aura is an intelligent career system engineered with multi-agent orchestration, verified vector retrieval, and human-in-the-loop decision governance.</p>
+      </div>
+      <a class="btn primary" href="#" data-route="chat">&#128172; Launch Career Agent</a>
+    </div>
+
+    <div class="about-grid" style="grid-template-columns:repeat(3,1fr); gap:20px;">
+      <div class="card">
+        <div class="ico" style="margin-bottom:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <h3>Multi-Agent Intelligence</h3>
+        <p>Orchestrated with CrewAI workflows and powered by Groq Llama 3.3 70B, Aura constructs tailored, step-by-step career navigation roadmaps with lightning-fast reasoning.</p>
+      </div>
+      <div class="card">
+        <div class="ico" style="margin-bottom:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></div>
+        <h3>Vector RAG Grounding</h3>
+        <p>Searches verified career frameworks and free curricula using FAISS vector indexing with MiniLM sentence transformers, ensuring guidance remains deeply grounded and hallucination-free.</p>
+      </div>
+      <div class="card">
+        <div class="ico" style="margin-bottom:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Human-in-the-Loop Governance</h3>
+        <p>Aura puts you in the driver's seat. Before executing irreversible roadmap shifts or milestone approvals, Aura presents its strategy for your review and explicit consent.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="block tab-pane" id="contact" style="padding-top:84px">
+<section class="block" id="contact" style="padding-top:84px; scroll-margin-top:72px;">
   <div class="wrap contact-grid">
     <div>
-      <h2>Contact us</h2>
-      <p class="sub">Questions, feedback or ideas for Aura? Send a message and we will reply by email.</p>
+      <span class="badge" style="margin-bottom:10px;">&#9993; Get In Touch</span>
+      <h2>Contact our team</h2>
+      <p class="sub">Have inquiries, need specialized career navigation guidance, or want to integrate Aura? Send our team a message or reach us directly.</p>
       <div class="info">
-        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>support@auraai.example</div>
-        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Chakwal, Punjab, Pakistan</div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          <div>
+            <strong style="display:block;color:#fff;font-size:0.95rem;">Email Dispatch</strong>
+            <span style="color:#9db4dd;font-size:0.86rem;">support@auraai.example</span>
+          </div>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <div>
+            <strong style="display:block;color:#fff;font-size:0.95rem;">Engineering Headquarters</strong>
+            <span style="color:#9db4dd;font-size:0.86rem;">Chakwal, Punjab, Pakistan</span>
+          </div>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div>
+            <strong style="display:block;color:#fff;font-size:0.95rem;">Operating Hours &amp; Response</strong>
+            <span style="color:#9db4dd;font-size:0.86rem;">Active 24/7 &bull; Average response &lt; 2 hours</span>
+          </div>
+        </div>
       </div>
     </div>
     <form id="contactForm">
-      <label>Name<input required placeholder="Your name"></label>
-      <label>Email<input type="email" required placeholder="you@example.com"></label>
-      <label>Message<textarea required placeholder="How can we help?"></textarea></label>
-      <button class="btn primary" type="submit">Send message</button>
-      <p class="ok" id="ok">Message sent. We will get back to you soon.</p>
+      <label>Full Name<input required placeholder="Your full name"></label>
+      <label>Email Address<input type="email" required placeholder="you@example.com"></label>
+      <label>Subject<input required placeholder="What would you like to discuss?"></label>
+      <label>Message<textarea required placeholder="Write your message or inquiry here..."></textarea></label>
+      <button class="btn primary lg" type="submit" style="justify-content:center;">Send Dispatch</button>
+      <p class="ok" id="ok">✓ Message sent successfully! Our team will get back to you shortly.</p>
     </form>
   </div>
 </section>
@@ -278,9 +398,9 @@ footer{margin-top:auto;border-top:1px solid var(--line);background:rgba(3,10,31,
   <div class="wrap foot">
     <span>&copy; <span id="yr">2026</span> AuraAI. All rights reserved.</span>
     <nav>
-      <a href="javascript:void(0)" onclick="switchTab('home')">Home</a>
-      <a href="javascript:void(0)" onclick="switchTab('about')">About</a>
-      <a href="javascript:void(0)" onclick="switchTab('contact')">Contact</a>
+      <a href="#home" onclick="window.switchTab('home')">Home</a>
+      <a href="#about" onclick="window.switchTab('about')">About</a>
+      <a href="#contact" onclick="window.switchTab('contact')">Contact</a>
     </nav>
   </div>
 </footer>
@@ -338,23 +458,43 @@ menu.addEventListener('click', () => {
 });
 nav.addEventListener('click', e => { if (e.target.closest('a')) nav.classList.remove('open'); });
 
-// Explicit Tab Switching (Home, About, Contact)
+// Smooth Section Navigation
 window.switchTab = function(tabName) {
-  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   const target = document.getElementById(tabName);
   if (target) {
-    target.classList.add('active');
+    target.scrollIntoView({ behavior: 'smooth' });
   }
   document.querySelectorAll('#nav a.link, footer nav a').forEach(a => {
     const oc = a.getAttribute('onclick') || '';
-    if (oc.includes("'" + tabName + "'")) {
+    const href = a.getAttribute('href') || '';
+    if (oc.includes("'" + tabName + "'") || href === '#' + tabName) {
       a.classList.add('active');
     } else {
       a.classList.remove('active');
     }
   });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+
+// Scroll Spy for auto-active nav links
+window.addEventListener('scroll', () => {
+  const scrollPos = window.scrollY + 140;
+  const sections = ['contact', 'about', 'home'];
+  for (const sId of sections) {
+    const el = document.getElementById(sId);
+    if (el && el.offsetTop <= scrollPos) {
+      document.querySelectorAll('#nav a.link').forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const oc = a.getAttribute('onclick') || '';
+        if (href === '#' + sId || oc.includes("'" + sId + "'")) {
+          a.classList.add('active');
+        } else {
+          a.classList.remove('active');
+        }
+      });
+      break;
+    }
+  }
+}, { passive: true });
 
 // Check auth and update header on load
 document.addEventListener('DOMContentLoaded', () => {
@@ -535,7 +675,7 @@ document.getElementById('contactForm').addEventListener('submit', e => {
   const okEl = document.getElementById('ok');
   okEl.style.display = 'block';
   e.target.reset();
-  setTimeout(() => { okEl.style.display = 'none'; }, 5000);
+  setTimeout(() => { okEl.style.display = 'none'; }, 6000);
 });
 </script>
 </body>

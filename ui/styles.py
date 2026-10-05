@@ -1477,6 +1477,163 @@ img, video, iframe, svg, canvas {
 .contact-wrapper { padding: 20px 0 60px; }
 .contact-grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: 40px; margin-top: 40px; }
 .status-indicator { display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.8rem; color: #00ff88; margin: 20px 0; }
-.status-dot { width: 8px; height: 8px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 10px #00ff88; animation: pulse 2s infinite; }
+/* Exact index.html Hero, Portrait & Feature card styles */
+.hero-container {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 0 30px;
+}
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: 1px solid rgba(77,140,255,.28);
+  border-radius: 999px;
+  color: #7db8ff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: rgba(31,139,255,.08);
+}
+.hero-title {
+  font-size: clamp(2.4rem, 5.5vw, 4.4rem);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  margin: 22px 0 20px;
+  color: #fff;
+}
+.hero-title em {
+  font-style: normal;
+  background: linear-gradient(90deg, #3aa0ff, #b07cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-desc {
+  color: #9db4dd;
+  font-size: 1.12rem;
+  max-width: 580px;
+  margin-bottom: 30px;
+  line-height: 1.65;
+}
+.portrait-wrap {
+  position: relative;
+  justify-self: center;
+  width: min(380px, 80vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+.portrait-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  border: 2px solid rgba(31, 139, 255, 0.65);
+  box-shadow: 0 0 50px rgba(31, 139, 255, 0.35), inset 0 0 40px rgba(31, 139, 255, 0.15);
+  animation: pulse-ring 4s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.02); opacity: 1; }
+}
+.portrait-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 20%;
+  border-radius: 50%;
+  border: 3px solid rgba(80, 160, 255, 0.8);
+  display: block;
+  background: #09204c;
+}
+.portrait-hello {
+  position: absolute;
+  right: -25px;
+  bottom: -30px;
+  background: #0b2253;
+  border: 1px solid rgba(77, 140, 255, 0.28);
+  border-radius: 18px;
+  padding: 16px 22px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.45), 0 0 30px rgba(31, 139, 255, 0.2);
+  z-index: 2;
+  backdrop-filter: blur(12px);
+}
+.portrait-hello strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.08rem;
+  color: #fff;
+}
+.portrait-hello strong svg {
+  width: 18px;
+  height: 18px;
+  fill: #3aa4ff;
+}
+.portrait-hello span {
+  color: #9db4dd;
+  font-size: 0.92rem;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Features 4-column grid matching index.html */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 24px 0 60px;
+}
+.feat-item {
+  background: rgba(12, 34, 84, 0.55);
+  border: 1px solid rgba(77, 140, 255, 0.28);
+  border-radius: 18px;
+  padding: 22px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feat-item:hover {
+  border-color: rgba(77, 160, 255, 0.6);
+  transform: translateY(-3px);
+  background: rgba(14, 38, 92, 0.7);
+}
+.feat-ico {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  background: linear-gradient(145deg, #12388a, #0b2253);
+  border: 1px solid rgba(77, 140, 255, 0.28);
+  color: #4aa8ff;
+}
+.feat-ico svg {
+  width: 24px;
+  height: 24px;
+}
+.feat-item h3 {
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  color: #fff;
+  font-weight: 700;
+}
+.feat-item p {
+  color: #9db4dd;
+  font-size: 0.92rem;
+  margin: 0;
+  line-height: 1.5;
+}
+@media(max-width: 960px) {
+  .hero-container { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .portrait-wrap { margin: 20px auto 40px; }
+  .portrait-hello { right: 0; }
+}
+@media(max-width: 540px) {
+  .features-grid { grid-template-columns: 1fr; }
+}
 </style>
 """, unsafe_allow_html=True)

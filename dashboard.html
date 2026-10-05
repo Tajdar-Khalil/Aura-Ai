@@ -363,17 +363,8 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
   <main class="panel chat">
     <div class="c-head"><div><svg class="spark"><use href="#spark"/></svg><span><h2>Chat with Aura</h2><p>Your AI Career Coach</p></span></div><span class="online"><i></i>Aura is online</span></div>
     <div class="msgs" id="msgs" aria-live="polite">
-      <div class="m me"><div class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff" stroke="none"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="#fff" stroke="none"/></svg></div>
-        <div class="bub">What skills should I learn to become a Web Application Security Engineer?<time>10:24 AM &#10003;&#10003;</time></div></div>
       <div class="m"><img src="assets/aura_avatar.jpg" alt="Aura" onerror="this.onerror=null; this.src='aura_avatar.jpg';">
-        <div class="bub"><p>Great question, <span class="un">Daniyal</span>! Becoming a Web Application Security Engineer requires a mix of technical skills, hands-on practice, and continuous learning. Here's a structured breakdown to help you get started:</p>
-          <div class="sec">
-            <section><span class="ic" style="background:#1f6fe0"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z"/></svg></span><div><h5>1. Core Security Skills</h5><ul><li>Web application security fundamentals</li><li>OWASP Top 10 (2021/2025)</li><li>Secure coding practices (HTML, JS, Python, PHP)</li><li>Authentication &amp; authorization (OAuth, JWT, SAML)</li><li>Input validation &amp; injection prevention (SQLi, XSS, CSRF)</li></ul></div></section>
-            <section><span class="ic" style="background:#4b4de0"><svg viewBox="0 0 24 24"><path d="m5 8 5 4-5 4M12 17h7"/></svg></span><div><h5>2. Technical &amp; Tools</h5><ul><li>Burp Suite (web proxy &amp; scanner)</li><li>OWASP ZAP (open source scanner)</li><li>Nmap (reconnaissance)</li><li>Wireshark (network analysis)</li><li>Fuzzing tools (ffuf, wfuzz)</li></ul></div></section>
-            <section><span class="ic" style="background:#2b7ff0"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8 5.500 5.500 0 0 1 10.700 1A3.500 3.500 0 0 1 17 18z"/></svg></span><div><h5>3. Supporting Knowledge</h5><ul><li>Linux administration</li><li>Networking (TCP/IP, DNS, HTTP/HTTPS)</li><li>Cloud security basics (AWS/Azure)</li><li>Secure SDLC &amp; DevSecOps</li></ul></div></section>
-            <section><span class="ic" style="background:#7a4cf0"><svg viewBox="0 0 24 24"><path d="m4 17 6-6 4 4 6-7M15 8h5v5"/></svg></span><div><h5>4. Career Growth &amp; Resources</h5><ul><li>Build a portfolio (bug bounty, CTFs, personal projects)</li><li>Get practical experience (labs, range, internships)</li><li>Certifications (CEH, OSCP, eJPT, or vendor certs)</li><li>Stay updated (labs, blogs, security communities)</li></ul></div></section>
-          </div>
-          <p>Would you like me to create a personalized roadmap with free resources and practical labs based on your current experience?</p><time>10:24 AM</time></div></div>
+        <div class="bub"><p>Hello <span class="un">there</span>! I am <b>Aura</b>, your AI Career &amp; Skills Navigator. How can I assist you with your career goals, roadmap, or skills today?</p><time>Just now</time></div></div>
     </div>
     <div class="chips" id="chips">
       <button class="chip">Show me a roadmap</button><button class="chip">Free learning resources</button><button class="chip">Compare AppSec vs GRC</button><button class="chip">Help me with job applications</button>
@@ -746,12 +737,12 @@ function getRecentChats() {
     const raw = localStorage.getItem(RECENT_CHATS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(item => item && item.query && !item.query.toLowerCase().includes('what skills should i learn'));
+      }
     }
   } catch (e) {}
-  return [
-    { query: 'What skills should I learn to become a Web Application Security Engineer?', time: '10:24 AM' }
-  ];
+  return [];
 }
 
 function saveRecentChats(items) {
@@ -764,6 +755,10 @@ function renderRecentChats() {
   const container = document.getElementById('recentChatsList');
   if (!container) return;
   const list = getRecentChats();
+  if (!list || list.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;padding:10px 4px;">No recent searches yet. Ask Aura anything above!</p>';
+    return;
+  }
   container.innerHTML = list.map(item => `
     <button class="chat-item" data-q="${esc(item.query)}" type="button">
       <span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span>

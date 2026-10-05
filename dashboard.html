@@ -100,10 +100,32 @@ main.chat{display:flex;flex-direction:column;overflow:hidden}
 .m.me{align-self:flex-end;flex-direction:row-reverse}
 .m img,.m .av{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:50% 20%;border:2px solid rgba(80,160,255,.7);flex:none}
 .m .av svg{width:22px;height:22px}
-.bub{padding:14px 18px;border-radius:18px;background:rgba(20,52,120,.7);border:1px solid var(--line);font-size:.94rem;line-height:1.6}
+.bub{padding:14px 18px;border-radius:18px;background:rgba(20,52,120,.7);border:1px solid var(--line);font-size:.94rem;line-height:1.6;word-break:break-word}
 .m.me .bub{background:linear-gradient(180deg,#1b4a9a,#143b80);border-top-right-radius:6px}
-.bub time{display:block;text-align:right;color:var(--muted);font-size:.72rem;margin-top:6px}
+.bub time{display:block;text-align:right;color:var(--muted);font-size:.72rem;margin-top:8px}
 .bub p+p{margin-top:8px}
+
+/* Enhanced Markdown & List Formatting in Chat Bubbles */
+.bub h1,.bub h2,.bub h3,.bub h4,.bub h5{margin:12px 0 6px;line-height:1.35;font-weight:700}
+.bub h2{font-size:1.15rem;color:#60a5fa}
+.bub h3{font-size:1.08rem;color:#7dd3fc}
+.bub h4{font-size:1.00rem;color:#93c5fd}
+.bub h5{font-size:0.92rem;color:#bae6fd}
+
+.bub ul{margin:8px 0 8px 20px;padding:0;list-style-type:disc;display:flex;flex-direction:column;gap:5px}
+.bub ol{margin:8px 0 8px 22px;padding:0;display:flex;flex-direction:column;gap:5px}
+.bub li{margin:2px 0;line-height:1.6;color:#e2e8f0}
+.bub li b,.bub li strong{color:#ffffff}
+.bub .chat-p{margin:6px 0;line-height:1.65;color:#e2e8f0}
+.bub .chat-table-wrap{overflow-x:auto;margin:12px 0;border-radius:10px;border:1px solid rgba(77,140,255,0.3);background:rgba(5,16,46,0.75)}
+.bub table{width:100%;border-collapse:collapse;font-size:0.86rem}
+.bub th{background:rgba(31,139,255,0.25);color:#7dd3fc;font-weight:700;text-align:left;padding:8px 12px;border:1px solid rgba(77,140,255,0.22);white-space:nowrap}
+.bub td{padding:8px 12px;border:1px solid rgba(77,140,255,0.18);vertical-align:top;color:#dbeafe;line-height:1.55}
+.bub pre{background:rgba(3,10,31,0.75);border:1px solid rgba(77,140,255,0.25);padding:10px 14px;border-radius:10px;overflow-x:auto;margin:10px 0}
+.bub code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:0.88em}
+.bub p>code,.bub li>code,.bub td>code,.bub div>code{background:rgba(37,140,255,0.18);padding:2px 6px;border-radius:4px;color:#93c5fd}
+.bub blockquote{border-left:3px solid #38bdf8;padding:6px 12px;margin:8px 0;background:rgba(38,189,248,0.08);border-radius:0 8px 8px 0;color:#cbd5e1}
+.bub hr{border:0;border-top:1px solid rgba(77,140,255,0.25);margin:12px 0}
 .sec{background:rgba(7,22,60,.65);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
 .sec section{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(77,140,255,.18)}
 .sec section:first-child{padding-top:0}.sec section:last-of-type{border:0;padding-bottom:4px}
@@ -452,9 +474,191 @@ function reply(q) {
   return 'Thanks for sharing that. Tell me a bit more about your goal and current experience so I can tailor my advice.';
 }
 
+function formatAuraMarkdown(text) {
+  if (!text) return '';
+
+  // Extract code blocks first to protect their contents
+  const codeBlocks = [];
+  text = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(
+      '<pre style="background:rgba(3,10,31,0.75);border:1px solid rgba(77,140,255,0.25);padding:10px 14px;border-radius:10px;overflow-x:auto;margin:10px 0;"><code class="language-' + (lang || 'text') + '">' +
+      code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+      '</code></pre>'
+    );
+    return '@@AURA_CODEBLOCK_' + idx + '@@';
+  });
+
+  // Extract inline code
+  text = text.replace(/`([^`\n]+)`/g, (match, code) => {
+    return '<code style="background:rgba(37,140,255,0.18);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.88em;color:#93c5fd;">' +
+      code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+      '</code>';
+  });
+
+  // Split lines that pack multiple inline bullets or numbered points together on a single line
+  text = text.replace(/([^\n])\s+•\s+/g, '$1\n• ');
+  text = text.replace(/([^\n])\s+\*\s+([A-Z0-9])/g, '$1\n* $2');
+  text = text.replace(/([^\n])\s+(\d+\.)\s+/g, '$1\n$2 ');
+
+  const lines = text.split('\n');
+  const out = [];
+  let inUl = false;
+  let inOl = false;
+  let inTable = false;
+  let tableRows = [];
+
+  function closeLists() {
+    let res = '';
+    if (inUl) { res += '</ul>'; inUl = false; }
+    if (inOl) { res += '</ol>'; inOl = false; }
+    return res;
+  }
+
+  function closeTable() {
+    if (!inTable || tableRows.length === 0) {
+      inTable = false;
+      tableRows = [];
+      return '';
+    }
+    let html = '<div class="chat-table-wrap" style="overflow-x:auto;margin:12px 0;border-radius:10px;border:1px solid rgba(77,140,255,0.3);background:rgba(5,16,46,0.75);"><table style="width:100%;border-collapse:collapse;font-size:0.86rem;">';
+    tableRows.forEach((row, rIdx) => {
+      const isHeader = (rIdx === 0);
+      const tag = isHeader ? 'th' : 'td';
+      const cellBg = isHeader ? 'background:rgba(31,139,255,0.25);color:#7dd3fc;font-weight:700;' : 'color:#dbeafe;';
+      html += '<tr>';
+      row.forEach(cell => {
+        let formattedCell = cell.trim();
+        formattedCell = formattedCell.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        formattedCell = formattedCell.replace(/•\s*/g, '<br>• ');
+        if (formattedCell.startsWith('<br>')) formattedCell = formattedCell.substring(4);
+        html += '<' + tag + ' style="padding:8px 12px;border:1px solid rgba(77,140,255,0.2);vertical-align:top;' + cellBg + '">' + formattedCell + '</' + tag + '>';
+      });
+      html += '</tr>';
+    });
+    html += '</table></div>';
+    inTable = false;
+    tableRows = [];
+    return html;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
+    // Table check: starts and ends with |
+    if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2) {
+      if (/^\|[\s\-:|]+\|$/.test(trimmed)) {
+        continue;
+      }
+      const listClose = closeLists();
+      if (listClose) out.push(listClose);
+
+      const cells = trimmed.slice(1, -1).split('|');
+      if (!inTable) {
+        inTable = true;
+        tableRows = [];
+      }
+      tableRows.push(cells);
+      continue;
+    } else {
+      if (inTable) {
+        out.push(closeTable());
+      }
+    }
+
+    // Horizontal Rule: --- or ***
+    if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+      const listClose = closeLists();
+      if (listClose) out.push(listClose);
+      out.push('<hr style="border:0;border-top:1px solid rgba(77,140,255,0.25);margin:12px 0;">');
+      continue;
+    }
+
+    // Blockquote: > text
+    if (trimmed.startsWith('>')) {
+      const listClose = closeLists();
+      if (listClose) out.push(listClose);
+      let qText = trimmed.replace(/^>\s*/, '');
+      qText = qText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      out.push('<blockquote style="border-left:3px solid #38bdf8;padding:6px 12px;margin:8px 0;background:rgba(38,189,248,0.08);border-radius:0 8px 8px 0;color:#cbd5e1;">' + qText + '</blockquote>');
+      continue;
+    }
+
+    // Headings: #, ##, ###, ####, etc.
+    const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (hMatch) {
+      const listClose = closeLists();
+      if (listClose) out.push(listClose);
+      const level = hMatch[1].length;
+      let hText = hMatch[2].replace(/#+$/, '').trim();
+      hText = hText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      const fontSize = level <= 2 ? '1.14rem' : (level === 3 ? '1.04rem' : '0.96rem');
+      const fontColor = level <= 2 ? '#60a5fa' : (level === 3 ? '#93c5fd' : '#bae6fd');
+      out.push('<h4 style="font-size:' + fontSize + ';color:' + fontColor + ';font-weight:700;margin:14px 0 6px;line-height:1.35;">' + hText + '</h4>');
+      continue;
+    }
+
+    // List items: Bullet (- , * , + , • ) or Numbered (1. , 2. )
+    const listMatch = raw.match(/^(\s*)([-*+•]|\d+[\.)])\s+(.*)$/);
+    if (listMatch) {
+      const isNumbered = /^\d+[\.)]/.test(listMatch[2]);
+      let itemContent = listMatch[3].trim();
+      itemContent = itemContent.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      itemContent = itemContent.replace(/\*(.*?)\*/g, '<i>$1</i>');
+
+      if (isNumbered) {
+        if (inUl) { out.push('</ul>'); inUl = false; }
+        if (!inOl) {
+          out.push('<ol style="margin:8px 0 8px 22px;padding:0;display:flex;flex-direction:column;gap:5px;">');
+          inOl = true;
+        }
+        out.push('<li style="margin:2px 0;line-height:1.6;color:#e2e8f0;">' + itemContent + '</li>');
+      } else {
+        if (inOl) { out.push('</ol>'); inOl = false; }
+        if (!inUl) {
+          out.push('<ul style="margin:8px 0 8px 20px;padding:0;list-style-type:disc;display:flex;flex-direction:column;gap:5px;">');
+          inUl = true;
+        }
+        out.push('<li style="margin:2px 0;line-height:1.6;color:#e2e8f0;">' + itemContent + '</li>');
+      }
+      continue;
+    }
+
+    // Not a list line -> close any open lists
+    const listClose = closeLists();
+    if (listClose) out.push(listClose);
+
+    // Empty line -> spacing
+    if (!trimmed) {
+      out.push('<div style="height:6px;"></div>');
+      continue;
+    }
+
+    // Regular line formatting
+    let lineFormatted = trimmed;
+    lineFormatted = lineFormatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    lineFormatted = lineFormatted.replace(/\*(.*?)\*/g, '<i>$1</i>');
+    out.push('<div class="chat-p" style="margin:5px 0;line-height:1.65;color:#e2e8f0;">' + lineFormatted + '</div>');
+  }
+
+  if (inTable) out.push(closeTable());
+  const listClose = closeLists();
+  if (listClose) out.push(listClose);
+
+  let finalHtml = out.join('');
+
+  // Re-insert code blocks
+  for (let i = 0; i < codeBlocks.length; i++) {
+    finalHtml = finalHtml.replace('@@AURA_CODEBLOCK_' + i + '@@', codeBlocks[i]);
+  }
+
+  return finalHtml;
+}
+
 async function send(q, humanApproved = false) {
   q = q.trim(); if (!q) return;
-  add('me', esc(q) + '<time>' + time() + ' &#10003;&#10003;</time>');
+  add('me', '<div class="chat-p">' + esc(q).replace(/\n/g, '<br>') + '</div><time>' + time() + ' &#10003;&#10003;</time>');
   const typing = add('aura', '<div class="typing"><i></i><i></i><i></i></div>');
   msgs.scrollTop = msgs.scrollHeight;
 
@@ -482,7 +686,10 @@ async function send(q, humanApproved = false) {
             body: JSON.stringify({
               model: modelName,
               messages: [
-                { role: 'system', content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends using clean markdown.' },
+                {
+                  role: 'system',
+                  content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends.\n\nFormatting Guidelines:\n- Always place each bullet point (using • or -) and numbered item on its own clean, separate line. Never group or mix multiple points on one line.\n- When presenting tables, use clean standard markdown tables with clear column headers.\n- Use clean headings without excessive raw hashes.'
+                },
                 { role: 'user', content: q }
               ],
               temperature: 0.3,
@@ -505,17 +712,10 @@ async function send(q, humanApproved = false) {
       replyText = reply(q);
     }
 
-    // Format basic markdown bold and bullet points
-    let formatted = replyText
-      .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-      .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre style="background:rgba(3,10,31,0.7);padding:10px;border-radius:8px;overflow-x:auto;margin:8px 0;"><code>$2</code></pre>')
-      .replace(/`(.*?)`/g, '<code style="background:rgba(37,140,255,0.18);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.88em;">$1</code>')
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/\n- /g, '<br>• ');
-
-    typing.querySelector('.bub').innerHTML = '<p>' + formatted + '</p><time>' + time() + '</time>';
+    const formatted = formatAuraMarkdown(replyText);
+    typing.querySelector('.bub').innerHTML = formatted + '<time>' + time() + '</time>';
   } catch (err) {
-    typing.querySelector('.bub').innerHTML = '<p>' + reply(q) + '</p><time>' + time() + '</time>';
+    typing.querySelector('.bub').innerHTML = formatAuraMarkdown(reply(q)) + '<time>' + time() + '</time>';
   }
   msgs.scrollTop = msgs.scrollHeight;
 }

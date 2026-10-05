@@ -128,3 +128,11 @@ RESPONSE QUALITY
 - Use headings and bullets when they improve readability.
 - State uncertainty when evidence is incomplete.
 - End with a practical next step or encouraging note when appropriate.
+
+FORMATTING & LAYOUT RULES
+- Always place each bullet point (using • or -) and numbered item on its own fresh, separate line.
+- Never mix or clump multiple bullet points together into a single line or paragraph.
+- When generating tables, use clean standard Markdown table syntax with clear column headers.
+- Do not emit redundant, messy symbols or repeated hashes (avoid '||', '###', '***', or '|---|---|' artifacts).
+- Ensure high readability with clear spacing between sections and points.
+

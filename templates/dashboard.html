@@ -84,7 +84,7 @@ aside.left::-webkit-scrollbar-thumb{background:rgba(77,140,255,.3);border-radius
 .chat-item:hover{background:rgba(31,139,255,.1)}
 .chat-item .ci{width:34px;height:34px;border-radius:10px;background:rgba(31,139,255,.2);display:grid;place-items:center;color:#7db8ff;flex:none}
 .chat-item .ci svg{width:17px;height:17px}
-.chat-item b{display:block;font-size:.84rem;font-weight:500;line-height:1.3}
+.chat-item b{display:block;font-size:.84rem;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 .chat-item small{color:var(--muted);font-size:.74rem}
 
 /* Chat */
@@ -163,8 +163,8 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
 .aura .tag{color:#d2e4ff;font-size:.82rem;line-height:1.5;padding:9px 12px;background:rgba(31,139,255,.08);border:1px solid rgba(77,140,255,.22);border-radius:12px}
 .aura .tag u{text-decoration-color:#38bdf8;text-underline-offset:3px;color:#fff;font-weight:600}
 
-.facts{padding:16px;display:flex;flex-direction:column;gap:9px}
-.facts-title{font-size:.8rem;font-weight:700;color:#7db8ff;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.facts{padding:16px;display:flex;flex-direction:column;gap:0}
+.facts-title{font-size:.8rem;font-weight:700;color:#7db8ff;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
 .fact{display:flex;gap:12px;align-items:center;padding:10px 12px;background:rgba(31,139,255,.06);border:1px solid rgba(77,140,255,.15);border-radius:12px;transition:all .2s ease}
 .fact:hover{background:rgba(31,139,255,.12);border-color:rgba(77,140,255,.35);transform:translateX(2px)}
 .fact .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(31,139,255,.2);color:#7db8ff;flex:none}
@@ -172,13 +172,23 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
 .fact b{font-size:.86rem;font-weight:600;color:#f2f6ff;display:block}
 .fact small{color:#9eb5dc;font-size:.74rem;display:block;margin-top:1px}
 
-.qa{padding:16px;display:flex;flex-direction:column;gap:9px}
-.qa h4{display:flex;gap:8px;align-items:center;font-size:.92rem;font-weight:700;color:#f2f6ff;margin-bottom:2px}
+.qa{padding:16px;display:flex;flex-direction:column;gap:0}
+.qa h4{display:flex;gap:8px;align-items:center;font-size:.92rem;font-weight:700;color:#f2f6ff}
 .qa h4 svg{color:#ffc542;fill:#ffc542;stroke:none;width:17px;height:17px}
 .qa button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(31,139,255,.08);font-size:.86rem;font-weight:600;color:#d6e3ff;cursor:pointer;text-align:left;transition:all .2s ease}
 .qa button:hover{background:rgba(31,139,255,.22);border-color:rgba(77,140,255,.5);color:#fff;transform:translateX(3px)}
 .qa button svg:first-child{width:17px;height:17px;color:#7db8ff;flex:none}
 .qa button svg:last-child{margin-left:auto;width:14px;height:14px;color:#9eb5dc;opacity:.7}
+
+/* Collapsible Dropdown Panels */
+.collapsible{transition:all .25s ease}
+.panel-header-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;padding:2px 0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-header-btn:hover .facts-title,.panel-header-btn:hover h4{color:#fff}
+.panel-header-btn .chevron{width:18px;height:18px;fill:none;stroke:#7db8ff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease;flex-shrink:0}
+.collapsible.closed .panel-header-btn .chevron{transform:rotate(-90deg)}
+.collapsible.closed .panel-body{display:none}
+.panel-body{display:flex;flex-direction:column;gap:9px;margin-top:10px;animation:fadeInDown .2s ease-out}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
 .quote{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(31,139,255,.12),rgba(34,224,192,.08));border:1px solid rgba(77,140,255,.25);font-size:.82rem;color:#d6e4fc;line-height:1.55;margin-bottom:8px}
 .quote .spark{width:22px;height:22px;flex:none;fill:#3aa0ff}
@@ -346,10 +356,7 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
     <div class="panel card"><h4>Your Progress</h4>
       <div class="prog"><div class="ring" style="--p:68"><span>68%</span></div><p>Career Growth Journey</p><svg viewBox="0 0 24 24"><use href="#go"/></svg></div></div>
     <div class="panel recent"><h4>Recent Chats</h4>
-      <button class="chat-item" data-q="Show me the Web Application Security career path"><span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span><span><b>Web Application Security Career Path</b><small>2 hours ago</small></span></button>
-      <button class="chat-item" data-q="Free learning resources for AppSec"><span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span><span><b>Free Learning Resources for AppSec</b><small>5 hours ago</small></span></button>
-      <button class="chat-item" data-q="Should I pursue GRC or VAPT?"><span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span><span><b>Should I pursue GRC or VAPT?</b><small>1 day ago</small></span></button>
-      <button class="chat-item" data-q="Show me a 90-day learning plan"><span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span><span><b>90-Day Learning Plan</b><small>1 day ago</small></span></button>
+      <div id="recentChatsList"></div>
     </div>
   </aside>
 
@@ -366,10 +373,10 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
             <section><span class="ic" style="background:#2b7ff0"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8 5.500 5.500 0 0 1 10.700 1A3.500 3.500 0 0 1 17 18z"/></svg></span><div><h5>3. Supporting Knowledge</h5><ul><li>Linux administration</li><li>Networking (TCP/IP, DNS, HTTP/HTTPS)</li><li>Cloud security basics (AWS/Azure)</li><li>Secure SDLC &amp; DevSecOps</li></ul></div></section>
             <section><span class="ic" style="background:#7a4cf0"><svg viewBox="0 0 24 24"><path d="m4 17 6-6 4 4 6-7M15 8h5v5"/></svg></span><div><h5>4. Career Growth &amp; Resources</h5><ul><li>Build a portfolio (bug bounty, CTFs, personal projects)</li><li>Get practical experience (labs, range, internships)</li><li>Certifications (CEH, OSCP, eJPT, or vendor certs)</li><li>Stay updated (labs, blogs, security communities)</li></ul></div></section>
           </div>
-          <p>Would you like me to create a personalized 90-day learning roadmap with free resources and practical labs based on your current experience?</p><time>10:24 AM</time></div></div>
+          <p>Would you like me to create a personalized roadmap with free resources and practical labs based on your current experience?</p><time>10:24 AM</time></div></div>
     </div>
     <div class="chips" id="chips">
-      <button class="chip">Show me a 90-day roadmap</button><button class="chip">Free learning resources</button><button class="chip">Compare AppSec vs GRC</button><button class="chip">Help me with job applications</button>
+      <button class="chip">Show me a roadmap</button><button class="chip">Free learning resources</button><button class="chip">Compare AppSec vs GRC</button><button class="chip">Help me with job applications</button>
     </div>
     <form class="input" id="form" autocomplete="off">
       <button type="button" class="clip" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m20 11-8.500 8.500a5 5 0 0 1-7-7L13 4a3.500 3.500 0 0 1 5 5l-8.500 8.500a2 2 0 0 1-3-3L14 7"/></svg></button>
@@ -387,32 +394,42 @@ aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
       <p class="tag"><u>Smart guidance.</u> Better decisions. A brighter future.</p>
     </div>
 
-    <div class="panel facts">
-      <div class="facts-title">✦ AI Core Architecture</div>
-      <div class="fact">
-        <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2 2M16.400 16.400l2 2M18.400 5.600l-2 2M7.600 16.400l-2 2"/></svg></span>
-        <div><b>Powered by GPT-OSS-120B</b><small>Advanced reasoning &amp; analysis</small></div>
-      </div>
-      <div class="fact">
-        <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5c0-1 3.500-2 8-2s8 1 8 2-3.500 2-8 2-8-1-8-2zM4 5v14c0 1 3.500 2 8 2s8-1 8-2V5M4 12c0 1 3.500 2 8 2s8-1 8-2"/></svg></span>
-        <div><b>RAG Knowledge Base</b><small>Curated career resources</small></div>
-      </div>
-      <div class="fact">
-        <span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.500"/><circle cx="12" cy="17" r="3"/></svg></span>
-        <div><b>4 External Tools</b><small>Search &bull; Wikipedia &bull; API &bull; Calc</small></div>
-      </div>
-      <div class="fact">
-        <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zM4 21c0-4 3.500-6 8-6s8 2 8 6"/></svg></span>
-        <div><b>Human-in-the-Loop</b><small>For key career choices</small></div>
+    <div class="panel facts collapsible closed" id="factsPanel">
+      <button type="button" class="panel-header-btn" id="factsToggle" aria-expanded="false" title="Toggle AI Core Architecture">
+        <span class="facts-title">✦ AI Core Architecture</span>
+        <svg class="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="panel-body" id="factsBody">
+        <div class="fact">
+          <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2 2M16.400 16.400l2 2M18.400 5.600l-2 2M7.600 16.400l-2 2"/></svg></span>
+          <div><b>Powered by GPT-OSS-120B</b><small>Advanced reasoning &amp; analysis</small></div>
+        </div>
+        <div class="fact">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5c0-1 3.500-2 8-2s8 1 8 2-3.500 2-8 2-8-1-8-2zM4 5v14c0 1 3.500 2 8 2s8-1 8-2V5M4 12c0 1 3.500 2 8 2s8-1 8-2"/></svg></span>
+          <div><b>RAG Knowledge Base</b><small>Curated career resources</small></div>
+        </div>
+        <div class="fact">
+          <span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.500"/><circle cx="12" cy="17" r="3"/></svg></span>
+          <div><b>4 External Tools</b><small>Search &bull; Wikipedia &bull; API &bull; Calc</small></div>
+        </div>
+        <div class="fact">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zM4 21c0-4 3.500-6 8-6s8 2 8 6"/></svg></span>
+          <div><b>Human-in-the-Loop</b><small>For key career choices</small></div>
+        </div>
       </div>
     </div>
 
-    <div class="panel qa">
-      <h4><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Quick Actions</h4>
-      <button data-q="Generate my career roadmap"><svg viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/></svg>Generate Career Roadmap<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-      <button data-q="Analyze my skills"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>Analyze My Skills<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-      <button data-q="Explore job opportunities"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg>Explore Job Opportunities<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-      <button data-q="Find free learning resources"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 9h8M8 13h5"/></svg>Find Learning Resources<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
+    <div class="panel qa collapsible closed" id="qaPanel">
+      <button type="button" class="panel-header-btn" id="qaToggle" aria-expanded="false" title="Toggle Quick Actions">
+        <h4><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Quick Actions</h4>
+        <svg class="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="panel-body" id="qaBody">
+        <button data-q="Generate my career roadmap"><svg viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/></svg>Generate Career Roadmap<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
+        <button data-q="Analyze my skills"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>Analyze My Skills<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
+        <button data-q="Explore job opportunities"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg>Explore Job Opportunities<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
+        <button data-q="Find free learning resources"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 9h8M8 13h5"/></svg>Find Learning Resources<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
+      </div>
     </div>
 
     <div class="quote">
@@ -466,7 +483,7 @@ function add(role, html) {
 // Placeholder replies: replace reply() with a call to your CrewAI/Groq backend
 function reply(q) {
   const t = q.toLowerCase();
-  if (t.includes('roadmap') || t.includes('90')) return 'Here is a starting 90-day outline: <b>Days 1-30</b> web fundamentals and OWASP Top 10, <b>Days 31-60</b> Burp Suite and hands-on labs, <b>Days 61-90</b> a portfolio project and a bug bounty or CTF. Which free resources should I attach to each phase?';
+  if (t.includes('roadmap')) return 'Here is a starting career outline: <b>Phase 1</b> web fundamentals and OWASP Top 10, <b>Phase 2</b> Burp Suite and hands-on labs, <b>Phase 3</b> a portfolio project and a bug bounty or CTF. Which free resources should I attach to each phase?';
   if (t.includes('grc') || t.includes('compare')) return 'VAPT is hands-on and technical (testing and exploiting systems). GRC is policy, risk and compliance work. Do you prefer building and breaking things, or writing policy and auditing? That decides the better fit.';
   if (t.includes('free') || t.includes('resource')) return 'Good free starting points: PortSwigger Web Security Academy, OWASP WebGoat and Juice Shop, TryHackMe free rooms. Want me to match them to your current level?';
   if (t.includes('skill')) return 'To analyze your skills I need to know what you already have. Tell me your top three skills and your target role.';
@@ -658,6 +675,7 @@ function formatAuraMarkdown(text) {
 
 async function send(q, humanApproved = false) {
   q = q.trim(); if (!q) return;
+  addRecentChat(q);
   add('me', '<div class="chat-p">' + esc(q).replace(/\n/g, '<br>') + '</div><time>' + time() + ' &#10003;&#10003;</time>');
   const typing = add('aura', '<div class="typing"><i></i><i></i><i></i></div>');
   msgs.scrollTop = msgs.scrollHeight;
@@ -719,6 +737,80 @@ async function send(q, humanApproved = false) {
   }
   msgs.scrollTop = msgs.scrollHeight;
 }
+
+// --- Dynamic Recent Chats Management ---
+const RECENT_CHATS_KEY = 'aura_recent_chats';
+
+function getRecentChats() {
+  try {
+    const raw = localStorage.getItem(RECENT_CHATS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [
+    { query: 'What skills should I learn to become a Web Application Security Engineer?', time: '10:24 AM' }
+  ];
+}
+
+function saveRecentChats(items) {
+  try {
+    localStorage.setItem(RECENT_CHATS_KEY, JSON.stringify(items));
+  } catch (e) {}
+}
+
+function renderRecentChats() {
+  const container = document.getElementById('recentChatsList');
+  if (!container) return;
+  const list = getRecentChats();
+  container.innerHTML = list.map(item => `
+    <button class="chat-item" data-q="${esc(item.query)}" type="button">
+      <span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span>
+      <span><b>${esc(item.query)}</b><small>${esc(item.time)}</small></span>
+    </button>
+  `).join('');
+
+  container.querySelectorAll('.chat-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.dataset.q;
+      if (q) send(q);
+    });
+  });
+}
+
+function addRecentChat(query) {
+  if (!query || !query.trim()) return;
+  const cleanQ = query.trim();
+  let list = getRecentChats();
+  list = list.filter(item => item.query.toLowerCase() !== cleanQ.toLowerCase());
+  list.unshift({ query: cleanQ, time: time() });
+  if (list.length > 10) list = list.slice(0, 10);
+  saveRecentChats(list);
+  renderRecentChats();
+}
+
+// --- Collapsible Dropdown Panels ---
+function toggleCollapse(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const isClosed = panel.classList.toggle('closed');
+  const btn = panel.querySelector('.panel-header-btn');
+  if (btn) btn.setAttribute('aria-expanded', String(!isClosed));
+}
+
+const factsToggle = document.getElementById('factsToggle');
+if (factsToggle) {
+  factsToggle.addEventListener('click', () => toggleCollapse('factsPanel'));
+}
+
+const qaToggle = document.getElementById('qaToggle');
+if (qaToggle) {
+  qaToggle.addEventListener('click', () => toggleCollapse('qaPanel'));
+}
+
+// Initial render of dynamic Recent Chats
+renderRecentChats();
 
 document.getElementById('form').addEventListener('submit', e => { e.preventDefault(); send(box.value); box.value = ''; });
 document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => send(c.textContent)));

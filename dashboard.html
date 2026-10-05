@@ -1,1102 +1,571 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chat with Aura | AuraAI</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>AuraAI Dashboard</title>
+
 <style>
-:root{--bg0:#030a1f;--bg1:#061a45;--panel:rgba(12,34,84,.5);--solid:#0b2253;--line:rgba(77,140,255,.25);--blue:#1f8bff;--cyan:#22e0c0;--text:#f2f6ff;--muted:#9db4dd;--font:'Plus Jakarta Sans',system-ui,'Segoe UI',Roboto,sans-serif}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:var(--font);color:var(--text);background:linear-gradient(160deg,var(--bg0),var(--bg1) 60%,#08235a);display:flex;flex-direction:column;overflow:hidden}
-a{color:inherit;text-decoration:none}
-button{font-family:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:10px}
-svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.spark{fill:#3aa0ff;stroke:none}
 
-/* Top bar */
-.top{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(3,10,31,.88);backdrop-filter:blur(14px)}
-.brand{display:flex;align-items:center;gap:12px}
-.brand .spark{width:32px;height:32px;filter:drop-shadow(0 0 10px rgba(31,139,255,.8))}
-.brand b{font-size:1.5rem;font-weight:800;letter-spacing:-.02em}.brand b span{color:var(--blue)}
-.brand i{font-style:normal;color:var(--muted);font-size:.88rem;padding-left:14px;border-left:1px solid var(--line)}
-.tools{display:flex;align-items:center;gap:16px}
-.bell-wrapper{position:relative}
-.bell{position:relative;background:rgba(31,139,255,.08);border:1px solid var(--line);border-radius:10px;color:#cfe0ff;cursor:pointer;padding:7px;display:grid;place-items:center;transition:all .2s ease}
-.bell:hover{background:rgba(31,139,255,.2);color:#fff;border-color:rgba(77,140,255,.45)}
-.bell-badge{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#ff4d5e;box-shadow:0 0 8px #ff4d5e;transition:opacity .2s}
-.bell-badge.hidden{opacity:0;pointer-events:none}
-
-/* Notifications Dropdown */
-.notif-dropdown{display:none;position:absolute;right:-60px;top:calc(100% + 10px);width:340px;background:#06173a;border:1px solid rgba(85,155,255,.32);border-radius:16px;box-shadow:0 16px 45px rgba(0,0,0,.75),0 0 25px rgba(37,140,255,.22);z-index:99999;overflow:hidden;animation:fadeInDown .2s cubic-bezier(0.16,1,0.3,1)}
-@keyframes fadeInDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.notif-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(85,155,255,.18);background:rgba(14,46,109,.4)}
-.notif-title{display:flex;align-items:center;gap:8px}
-.notif-title b{font-size:.92rem;color:#fff}
-.notif-count{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(37,140,255,.25);border:1px solid rgba(85,155,255,.35);color:#7ac0ff}
-.notif-mark{background:none;border:0;color:#9eb5dc;font-size:.76rem;cursor:pointer;font-weight:600;transition:color .2s}
-.notif-mark:hover{color:#fff;text-decoration:underline}
-.notif-list{max-height:330px;overflow-y:auto;display:flex;flex-direction:column}
-.notif-list::-webkit-scrollbar{width:5px}
-.notif-list::-webkit-scrollbar-thumb{background:rgba(77,140,255,.3);border-radius:99px}
-.notif-item{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(85,155,255,.1);transition:background .2s;cursor:pointer;position:relative}
-.notif-item:last-child{border-bottom:0}
-.notif-item:hover{background:rgba(31,139,255,.12)}
-.notif-item.unread{background:rgba(31,139,255,.06)}
-.notif-item.unread::before{content:"";position:absolute;left:6px;top:18px;width:5px;height:5px;border-radius:50%;background:#38bdf8;box-shadow:0 0 6px #38bdf8}
-.notif-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;font-size:.95rem}
-.notif-content{flex:1;min-width:0}
-.notif-heading{font-size:.84rem;font-weight:700;color:#f2f6ff;line-height:1.3;margin-bottom:3px}
-.notif-content p{font-size:.76rem;color:#a0b8df;line-height:1.4;margin-bottom:4px}
-.notif-content time{font-size:.7rem;color:#6b87b8}
-.notif-footer{padding:10px;border-top:1px solid rgba(85,155,255,.18);text-align:center;background:rgba(14,46,109,.25)}
-.notif-clear-btn{width:100%;background:none;border:0;color:#9eb5dc;font-size:.78rem;font-weight:600;cursor:pointer;padding:4px}
-.notif-clear-btn:hover{color:#fca5a5}
-
-.user{display:flex;align-items:center;gap:10px;background:rgba(31,139,255,.1);border:1px solid var(--line);border-radius:999px;padding:4px 14px 4px 4px;font-weight:600;font-size:.88rem;cursor:pointer}
-.av{width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,#2b97ff,#1468d6);display:grid;place-items:center}
-.av svg{width:18px;height:18px}
-
-/* Layout */
-.app{position:absolute;top:64px;left:0;right:0;bottom:0;display:grid;grid-template-columns:278px 1fr 350px;gap:18px;padding:18px;min-height:0}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;min-height:0}
-aside.left{display:flex;flex-direction:column;gap:16px;overflow-y:auto;overflow-x:hidden;min-height:0;padding-right:4px}
-aside.left>*{flex-shrink:0}
-aside.left .recent{flex-shrink:1;min-height:180px}
-aside.left::-webkit-scrollbar{width:6px}
-aside.left::-webkit-scrollbar-thumb{background:rgba(77,140,255,.3);border-radius:99px}
-.menu{display:grid;gap:4px}
-.menu button{display:flex;align-items:center;gap:14px;padding:13px 16px;border:0;border-radius:12px;background:none;color:#d6e3ff;font-size:.98rem;font-weight:500;cursor:pointer;text-align:left;transition:background .2s}
-.menu button:hover{background:rgba(31,139,255,.14)}
-.menu button.on{background:linear-gradient(180deg,#1f8bff,#1468d6);color:#fff;font-weight:600;box-shadow:0 6px 18px rgba(31,139,255,.35)}
-.card{padding:18px}
-.card h4{font-size:.95rem;font-weight:600;margin-bottom:12px}
-.prog{display:flex;align-items:center;gap:14px;cursor:pointer}
-.ring{width:70px;height:70px;border-radius:50%;flex:none;background:conic-gradient(var(--blue) calc(var(--p)*1%),rgba(255,255,255,.1) 0);display:grid;place-items:center}
-.ring span{width:54px;height:54px;border-radius:50%;background:#0a2054;display:grid;place-items:center;font-weight:700;font-size:.95rem}
-.prog p{flex:1;font-size:.95rem;color:#dbe7ff}
-.recent{padding:16px 16px 6px;flex:1;min-height:0;overflow:auto}
-.recent h4{font-size:.92rem;color:#cfe0ff;margin-bottom:6px}
-.chat-item{display:flex;gap:12px;align-items:center;width:100%;padding:12px 6px;border:0;border-bottom:1px solid rgba(77,140,255,.15);background:none;text-align:left;cursor:pointer;border-radius:10px}
-.chat-item:last-child{border:0}
-.chat-item:hover{background:rgba(31,139,255,.1)}
-.chat-item .ci{width:34px;height:34px;border-radius:10px;background:rgba(31,139,255,.2);display:grid;place-items:center;color:#7db8ff;flex:none}
-.chat-item .ci svg{width:17px;height:17px}
-.chat-item b{display:block;font-size:.84rem;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-.chat-item small{color:var(--muted);font-size:.74rem}
-
-/* Chat */
-main.chat{display:flex;flex-direction:column;overflow:hidden}
-.c-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid var(--line)}
-.c-head div{display:flex;align-items:center;gap:12px}
-.c-head .spark{width:28px;height:28px}
-.c-head h2{font-size:1.1rem;line-height:1.2}.c-head p{color:var(--muted);font-size:.84rem}
-.online{display:flex;align-items:center;gap:8px;padding:7px 16px;border:1px solid rgba(34,224,192,.5);border-radius:999px;color:#7df0d8;font-size:.84rem;background:rgba(34,224,192,.06)}
-.online i{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
-.msgs{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
-.m{display:flex;gap:12px;max-width:86%}
-.m.me{align-self:flex-end;flex-direction:row-reverse}
-.m img,.m .av{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:50% 20%;border:2px solid rgba(80,160,255,.7);flex:none}
-.m .av svg{width:22px;height:22px}
-.bub{padding:14px 18px;border-radius:18px;background:rgba(20,52,120,.7);border:1px solid var(--line);font-size:.94rem;line-height:1.6;word-break:break-word}
-.m.me .bub{background:linear-gradient(180deg,#1b4a9a,#143b80);border-top-right-radius:6px}
-.bub time{display:block;text-align:right;color:var(--muted);font-size:.72rem;margin-top:8px}
-.bub p+p{margin-top:8px}
-
-/* Enhanced Markdown & List Formatting in Chat Bubbles */
-.bub h1,.bub h2,.bub h3,.bub h4,.bub h5{margin:12px 0 6px;line-height:1.35;font-weight:700}
-.bub h2{font-size:1.15rem;color:#60a5fa}
-.bub h3{font-size:1.08rem;color:#7dd3fc}
-.bub h4{font-size:1.00rem;color:#93c5fd}
-.bub h5{font-size:0.92rem;color:#bae6fd}
-
-.bub ul{margin:8px 0 8px 20px;padding:0;list-style-type:disc;display:flex;flex-direction:column;gap:5px}
-.bub ol{margin:8px 0 8px 22px;padding:0;display:flex;flex-direction:column;gap:5px}
-.bub li{margin:2px 0;line-height:1.6;color:#e2e8f0}
-.bub li b,.bub li strong{color:#ffffff}
-.bub .chat-p{margin:6px 0;line-height:1.65;color:#e2e8f0}
-.bub .chat-table-wrap{overflow-x:auto;margin:12px 0;border-radius:10px;border:1px solid rgba(77,140,255,0.3);background:rgba(5,16,46,0.75)}
-.bub table{width:100%;border-collapse:collapse;font-size:0.86rem}
-.bub th{background:rgba(31,139,255,0.25);color:#7dd3fc;font-weight:700;text-align:left;padding:8px 12px;border:1px solid rgba(77,140,255,0.22);white-space:nowrap}
-.bub td{padding:8px 12px;border:1px solid rgba(77,140,255,0.18);vertical-align:top;color:#dbeafe;line-height:1.55}
-.bub pre{background:rgba(3,10,31,0.75);border:1px solid rgba(77,140,255,0.25);padding:10px 14px;border-radius:10px;overflow-x:auto;margin:10px 0}
-.bub code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:0.88em}
-.bub p>code,.bub li>code,.bub td>code,.bub div>code{background:rgba(37,140,255,0.18);padding:2px 6px;border-radius:4px;color:#93c5fd}
-.bub blockquote{border-left:3px solid #38bdf8;padding:6px 12px;margin:8px 0;background:rgba(38,189,248,0.08);border-radius:0 8px 8px 0;color:#cbd5e1}
-.bub hr{border:0;border-top:1px solid rgba(77,140,255,0.25);margin:12px 0}
-.sec{background:rgba(7,22,60,.65);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
-.sec section{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(77,140,255,.18)}
-.sec section:first-child{padding-top:0}.sec section:last-of-type{border:0;padding-bottom:4px}
-.sec .ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none;color:#fff}
-.sec h5{color:#4db3ff;font-size:.92rem;margin-bottom:4px}
-.sec ul{padding-left:18px;font-size:.84rem;color:#dbe7ff;line-height:1.75}
-.typing{display:flex;gap:5px;padding:6px 2px}
-.typing i{width:8px;height:8px;border-radius:50%;background:#7db8ff;animation:b 1s infinite}
-.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
-@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-4px)}}
-.chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:0 22px 12px}
-.chip{padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:rgba(31,139,255,.1);font-size:.8rem;cursor:pointer;color:#d6e3ff}
-.chip:hover{background:rgba(31,139,255,.25)}
-.input{display:flex;align-items:center;gap:10px;margin:0 22px 22px;padding:8px 8px 8px 16px;border:1px solid var(--line);border-radius:16px;background:rgba(3,10,31,.55)}
-.input:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(31,139,255,.2)}
-.input input{flex:1;background:none;border:0;color:var(--text);font:400 .95rem var(--font);padding:10px 0}
-.input input:focus{outline:none}.input input::placeholder{color:#7d94c2}
-.clip{background:none;border:0;color:#9db4dd;cursor:pointer}
-.send{width:46px;height:40px;border:0;border-radius:12px;background:linear-gradient(180deg,#2b97ff,#1468d6);cursor:pointer;display:grid;place-items:center;box-shadow:0 6px 18px rgba(31,139,255,.4)}
-
-/* Right panel */
-aside.right{display:flex;flex-direction:column;gap:16px;overflow-y:auto;overflow-x:hidden;min-height:0;padding-right:4px}
-aside.right>*{flex-shrink:0}
-aside.right::-webkit-scrollbar{width:6px}
-aside.right::-webkit-scrollbar-thumb{background:rgba(77,140,255,.3);border-radius:99px}
-aside.right::-webkit-scrollbar-thumb:hover{background:rgba(77,140,255,.55)}
-
-.aura{position:relative;padding:22px 18px 20px;text-align:center;background:linear-gradient(180deg,rgba(14,40,98,.65),rgba(7,22,60,.7));border:1px solid var(--line);border-radius:20px}
-.aura .pic{width:130px;height:130px;margin:0 auto 14px;position:relative;border-radius:50%;padding:3px;background:linear-gradient(135deg,rgba(37,140,255,.8),rgba(34,224,192,.6));box-shadow:0 0 25px rgba(37,140,255,.4)}
-.aura img{width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 15%;display:block}
-.aura .spark{position:absolute;top:14px;right:14px;width:32px;height:32px;padding:6px;border:1px solid var(--line);border-radius:9px;background:rgba(31,139,255,.15);fill:#3aa0ff}
-.aura h3{font-size:1.4rem;font-weight:800;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff}
-.aura h3 span{font-size:.7rem;padding:2px 8px;border-radius:6px;background:linear-gradient(135deg,#1f8bff,#1063d8);font-weight:700;color:#fff;letter-spacing:.04em}
-.aura .role{font-size:.86rem;color:#9eb5dc;margin-bottom:12px;font-weight:500}
-.aura .tag{color:#d2e4ff;font-size:.82rem;line-height:1.5;padding:9px 12px;background:rgba(31,139,255,.08);border:1px solid rgba(77,140,255,.22);border-radius:12px}
-.aura .tag u{text-decoration-color:#38bdf8;text-underline-offset:3px;color:#fff;font-weight:600}
-
-.facts{padding:16px;display:flex;flex-direction:column;gap:0}
-.facts-title{font-size:.8rem;font-weight:700;color:#7db8ff;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
-.fact{display:flex;gap:12px;align-items:center;padding:10px 12px;background:rgba(31,139,255,.06);border:1px solid rgba(77,140,255,.15);border-radius:12px;transition:all .2s ease}
-.fact:hover{background:rgba(31,139,255,.12);border-color:rgba(77,140,255,.35);transform:translateX(2px)}
-.fact .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(31,139,255,.2);color:#7db8ff;flex:none}
-.fact .ic svg{width:18px;height:18px}
-.fact b{font-size:.86rem;font-weight:600;color:#f2f6ff;display:block}
-.fact small{color:#9eb5dc;font-size:.74rem;display:block;margin-top:1px}
-
-.qa{padding:16px;display:flex;flex-direction:column;gap:0}
-.qa h4{display:flex;gap:8px;align-items:center;font-size:.92rem;font-weight:700;color:#f2f6ff}
-.qa h4 svg{color:#ffc542;fill:#ffc542;stroke:none;width:17px;height:17px}
-.qa button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(31,139,255,.08);font-size:.86rem;font-weight:600;color:#d6e3ff;cursor:pointer;text-align:left;transition:all .2s ease}
-.qa button:hover{background:rgba(31,139,255,.22);border-color:rgba(77,140,255,.5);color:#fff;transform:translateX(3px)}
-.qa button svg:first-child{width:17px;height:17px;color:#7db8ff;flex:none}
-.qa button svg:last-child{margin-left:auto;width:14px;height:14px;color:#9eb5dc;opacity:.7}
-
-/* Collapsible Dropdown Panels */
-.collapsible{transition:all .25s ease}
-.panel-header-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;padding:2px 0;cursor:pointer;color:inherit;font:inherit;text-align:left}
-.panel-header-btn:hover .facts-title,.panel-header-btn:hover h4{color:#fff}
-.panel-header-btn .chevron{width:18px;height:18px;fill:none;stroke:#7db8ff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease;flex-shrink:0}
-.collapsible.closed .panel-header-btn .chevron{transform:rotate(-90deg)}
-.collapsible.closed .panel-body{display:none}
-.panel-body{display:flex;flex-direction:column;gap:9px;margin-top:10px;animation:fadeInDown .2s ease-out}
-@keyframes fadeInDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-
-.quote{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,rgba(31,139,255,.12),rgba(34,224,192,.08));border:1px solid rgba(77,140,255,.25);font-size:.82rem;color:#d6e4fc;line-height:1.55;margin-bottom:8px}
-.quote .spark{width:22px;height:22px;flex:none;fill:#3aa0ff}
-.quote small{display:block;text-align:right;color:#38bdf8;font-weight:700;margin-top:6px;font-size:.76rem}
-
-
-/* Fixed desktop header + mobile navigation */
-.mobile-nav-toggle{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:rgba(31,139,255,.10);color:#dceaff;font-size:1.2rem;cursor:pointer;align-items:center;justify-content:center}
-.mobile-drawer,.mobile-drawer-backdrop{display:none}
-@media(max-width:860px){
-  body{overflow:hidden}
-  .top{height:60px;padding:0 12px}
-  .top .brand{gap:8px}.top .brand .spark{width:28px;height:28px}.top .brand b{font-size:1.28rem}
-  .top .brand i{display:none}
-  .mobile-nav-toggle{display:flex;order:-1}
-  .tools{gap:6px}.bell{padding:6px}.user{padding:3px 8px 3px 3px}.user span:nth-child(2){display:none}
-  .app{top:60px;padding:8px;display:block}
-  main.chat{height:calc(100vh - 68px);width:100%;border-radius:16px}
-  .c-head{padding:12px 14px}.c-head h2{font-size:1rem}.c-head p{font-size:.75rem}
-  .online{padding:5px 9px;font-size:.72rem}
-  .msgs{padding:14px 10px;gap:12px}
-  .m{max-width:92%;gap:8px}.m img,.m .av{width:34px;height:34px}
-  .bub{padding:11px 13px;font-size:.86rem;line-height:1.5;border-radius:15px}
-  .sec{padding:11px;margin:9px 0}.sec section{gap:8px;padding:9px 0}.sec ul{font-size:.78rem;line-height:1.55}
-  .chips{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;padding:0 10px 8px}
-  .chip{white-space:nowrap;padding:7px 11px;font-size:.74rem}
-  .input{margin:0 10px 10px;padding:6px 6px 6px 11px;border-radius:13px}
-  .input input{font-size:.85rem;min-width:0}
-  .send{width:40px;height:36px}
-  .mobile-drawer{display:block;position:fixed;top:60px;left:0;bottom:0;width:min(310px,86vw);z-index:130;background:linear-gradient(180deg,#061a45,#030a1f);border-right:1px solid var(--line);box-shadow:20px 0 50px rgba(0,0,0,.45);transform:translateX(-105%);transition:transform .22s ease;padding:14px}
-  .mobile-drawer.open{transform:translateX(0)}
-  .mobile-drawer-backdrop{display:block;position:fixed;inset:60px 0 0;z-index:120;background:rgba(0,0,0,.48);opacity:0;pointer-events:none;transition:opacity .22s ease}
-  .mobile-drawer-backdrop.open{opacity:1;pointer-events:auto}
-  .mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 18px;border-bottom:1px solid var(--line);margin-bottom:10px}
-  .mobile-drawer-head b{font-size:1.25rem}.mobile-drawer-head button{background:none;border:0;color:#dbe7ff;font-size:1.7rem;cursor:pointer}
-  .mobile-menu{display:grid;gap:5px}
-  .mobile-menu button{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:12px;background:none;color:#d6e3ff;padding:13px 12px;text-align:left;font:500 .92rem var(--font)}
-  .mobile-menu button.on{background:linear-gradient(180deg,#1f8bff,#1468d6);color:#fff;font-weight:700}
-  .mobile-menu button span{width:22px;text-align:center}
-  .mobile-progress{margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(12,34,84,.45)}
-  .mobile-progress>b{display:block;font-size:.86rem;margin-bottom:10px}.mobile-progress div{height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}.mobile-progress div span{display:block;height:100%;border-radius:99px;background:var(--blue)}.mobile-progress small{display:block;color:var(--muted);margin-top:8px;font-size:.72rem}
-}
-@media(min-width:861px){
-  .mobile-nav-toggle,.mobile-drawer,.mobile-drawer-backdrop{display:none!important}
+* {
+    box-sizing: border-box;
 }
 
-@media(max-width:1250px){.app{grid-template-columns:250px 1fr}aside.right{display:none}}
-@media(max-width:860px){.app{grid-template-columns:1fr;padding:8px}aside.left{display:none}.brand i{display:none}.user span{display:none}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important}}
-::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:rgba(77,140,255,.3);border-radius:8px}
+html,
+body {
+
+    margin: 0;
+
+    padding: 0;
+
+    width: 100%;
+
+    min-height: 100%;
+
+    font-family:
+        "Plus Jakarta Sans",
+        Arial,
+        sans-serif;
+
+    background: #030a1f;
+
+    color: #f2f6ff;
+
+}
+
+
+.dashboard {
+
+    min-height: 100vh;
+
+    padding: 20px;
+
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.header {
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 15px 20px;
+
+    border-radius: 18px;
+
+    border:
+        1px solid
+        rgba(96,165,250,.16);
+
+    background:
+        rgba(3,10,31,.90);
+
+    backdrop-filter:
+        blur(20px);
+
+    box-shadow:
+        0 15px 50px
+        rgba(0,0,0,.25);
+
+}
+
+
+.brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+.logo {
+
+    width: 42px;
+
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #258cff,
+            #7c3aed
+        );
+
+    font-size: 20px;
+
+    font-weight: 800;
+
+}
+
+
+.brand-name {
+
+    font-size: 1.05rem;
+
+    font-weight: 800;
+
+}
+
+
+.brand-description {
+
+    margin-top: 3px;
+
+    font-size: .72rem;
+
+    color: #8fa7ce;
+
+}
+
+
+.status {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 8px 13px;
+
+    border-radius: 999px;
+
+    border:
+        1px solid
+        rgba(34,197,94,.25);
+
+    background:
+        rgba(34,197,94,.08);
+
+    color: #86efac;
+
+    font-size: .75rem;
+
+}
+
+
+.status-dot {
+
+    width: 7px;
+
+    height: 7px;
+
+    border-radius: 50%;
+
+    background: #22c55e;
+
+    box-shadow:
+        0 0 10px
+        rgba(34,197,94,.8);
+
+}
+
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.hero {
+
+    max-width: 900px;
+
+    margin: 80px auto 45px;
+
+    text-align: center;
+
+}
+
+
+.hero h1 {
+
+    margin: 0;
+
+    font-size:
+        clamp(
+            2.2rem,
+            6vw,
+            4rem
+        );
+
+    line-height: 1.08;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #7dd3fc,
+            #60a5fa
+        );
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+
+}
+
+
+.hero p {
+
+    max-width: 700px;
+
+    margin:
+        20px auto 0;
+
+    color: #91a7cb;
+
+    line-height: 1.8;
+
+}
+
+
+/* =========================================================
+   CARDS
+   ========================================================= */
+
+.cards {
+
+    max-width: 1100px;
+
+    margin: 0 auto;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            1fr
+        );
+
+    gap: 18px;
+
+}
+
+
+.card {
+
+    padding: 25px;
+
+    min-height: 190px;
+
+    border-radius: 18px;
+
+    border:
+        1px solid
+        rgba(96,165,250,.13);
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(15,32,65,.78),
+            rgba(7,18,42,.72)
+        );
+
+}
+
+
+.card-icon {
+
+    font-size: 1.8rem;
+
+    margin-bottom: 15px;
+
+}
+
+
+.card h2 {
+
+    margin:
+        0 0 10px;
+
+    font-size: 1.05rem;
+
+}
+
+
+.card p {
+
+    margin: 0;
+
+    color: #91a7cb;
+
+    line-height: 1.65;
+
+}
+
+
+/* =========================================================
+   AI NOTICE
+   ========================================================= */
+
+.ai-notice {
+
+    max-width: 1100px;
+
+    margin:
+        25px auto 0;
+
+    padding: 20px;
+
+    border-radius: 16px;
+
+    border:
+        1px solid
+        rgba(37,140,255,.18);
+
+    background:
+        rgba(37,140,255,.07);
+
+    color: #bfdbfe;
+
+    line-height: 1.7;
+
+}
+
+
+.ai-notice strong {
+
+    color: #ffffff;
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width: 750px) {
+
+    .dashboard {
+
+        padding: 12px;
+
+    }
+
+
+    .brand-description {
+
+        display: none;
+
+    }
+
+
+    .cards {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .hero {
+
+        margin-top: 50px;
+
+    }
+
+
+    .hero h1 {
+
+        font-size: 2.3rem;
+
+    }
+
+
+    .status {
+
+        font-size: .68rem;
+
+        padding: 7px 10px;
+
+    }
+
+}
+
 </style>
+
 </head>
+
+
 <body>
-<svg width="0" height="0" style="position:absolute"><defs>
-<symbol id="spark" viewBox="0 0 24 24"><path class="spark" d="M12 1.5c.6 5.2 2.6 8.1 5.6 9.2 1.5.5 3.1.8 5 1.3-4.6 1-7.4 2.6-9 5.4-.7 1.2-1.2 3-1.6 5.6-.4-2.6-.9-4.4-1.6-5.6-1.6-2.8-4.4-4.4-9-5.4 1.9-.5 3.5-.8 5-1.3 3-1.1 5-4 5.6-9.2z"/></symbol>
-<symbol id="doc" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"/></symbol>
-<symbol id="go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
-</defs></svg>
 
-<header class="top">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <a class="brand" href="javascript:void(0)" onclick="window.navigateTo('home')"><svg class="spark"><use href="#spark"/></svg><b>Aura<span>AI</span></b><i>AI Career &amp; Skills Navigator</i></a>
-    <button type="button" class="btn-return-home" onclick="window.navigateTo('home')" style="padding:6px 14px;border-radius:10px;font-size:0.86rem;font-weight:600;background:rgba(31,139,255,0.18);border:1px solid rgba(77,140,255,0.45);color:#d6e3ff;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;">
-      ⌂ Return to Home
-    </button>
-  </div>
-  <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Open dashboard menu" aria-expanded="false">☰</button>
-  <div class="tools">
-    <button type="button" id="apiKeyStatusBtn" class="api-key-status-btn" onclick="window.openApiKeyModal()" title="Groq AI Engine Connection Status" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.2s;border:1px solid rgba(77,140,255,0.3);background:rgba(14,165,233,0.12);color:#7dd3fc;">
-      <span id="apiKeyDot" style="width:7px;height:7px;border-radius:50%;background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span>
-      <span id="apiKeyText">AI Connected</span>
-    </button>
-    <div class="bell-wrapper" id="bellWrapper">
-      <button class="bell" id="bellBtn" aria-label="Notifications" title="View notifications">
-        <svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4zM10 21h4"/></svg>
-        <span class="bell-badge" id="bellBadge"></span>
-      </button>
+<div class="dashboard">
 
-      <div class="notif-dropdown" id="notifDropdown">
-        <div class="notif-header">
-          <div class="notif-title">
-            <b>Notifications</b>
-            <span class="notif-count" id="notifCount">3 New</span>
-          </div>
-          <button type="button" class="notif-mark" id="notifMarkAll">Mark read</button>
-        </div>
 
-        <div class="notif-list" id="notifList">
-          <div class="notif-item unread">
-            <div class="notif-icon" style="background:rgba(37,140,255,0.2);color:#38bdf8;">✦</div>
-            <div class="notif-content">
-              <div class="notif-heading">Aura Career Analysis Ready</div>
-              <p>Your 90-day Web Security roadmap &amp; lab recommendations have been generated.</p>
-              <time>10 mins ago</time>
+    <!-- HEADER -->
+
+    <header class="header">
+
+        <div class="brand">
+
+            <div class="logo">
+                ✦
             </div>
-          </div>
 
-          <div class="notif-item unread">
-            <div class="notif-icon" style="background:rgba(34,224,192,0.2);color:#22e0c0;">◈</div>
-            <div class="notif-content">
-              <div class="notif-heading">New Free Resources Added</div>
-              <p>PortSwigger Web Security Academy free modules matched to your profile.</p>
-              <time>2 hours ago</time>
+            <div>
+
+                <div class="brand-name">
+                    AuraAI
+                </div>
+
+                <div class="brand-description">
+                    AI Career & Skills Navigator
+                </div>
+
             </div>
-          </div>
 
-          <div class="notif-item unread">
-            <div class="notif-icon" style="background:rgba(168,85,247,0.2);color:#c084fc;">📈</div>
-            <div class="notif-content">
-              <div class="notif-heading">Market Demand Surge</div>
-              <p>AppSec &amp; Cloud Security job postings increased by +18% this month.</p>
-              <time>1 day ago</time>
+        </div>
+
+
+        <div class="status">
+
+            <span class="status-dot"></span>
+
+            AI Engine Connected
+
+        </div>
+
+    </header>
+
+
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+        <h1>
+            Your Career.
+            <br>
+            Powered by AI.
+        </h1>
+
+        <p>
+            Aura combines career knowledge,
+            FAISS retrieval, conversation memory,
+            external research tools and Groq-powered
+            AI reasoning to help you make better
+            career decisions.
+        </p>
+
+    </section>
+
+
+
+    <!-- FEATURES -->
+
+    <section class="cards">
+
+
+        <article class="card">
+
+            <div class="card-icon">
+                🎯
             </div>
-          </div>
 
-          <div class="notif-item">
-            <div class="notif-icon" style="background:rgba(255,255,255,0.1);color:#9eb5dc;">✓</div>
-            <div class="notif-content">
-              <div class="notif-heading">Profile Milestone</div>
-              <p>Your career profile progress reached 68%. Keep it up!</p>
-              <time>3 days ago</time>
+            <h2>
+                Career Direction
+            </h2>
+
+            <p>
+                Explore career paths, compare
+                roles and understand the skills
+                required for your target profession.
+            </p>
+
+        </article>
+
+
+
+        <article class="card">
+
+            <div class="card-icon">
+                🧠
             </div>
-          </div>
-        </div>
 
-        <div class="notif-footer">
-          <button type="button" id="notifClearAll" class="notif-clear-btn">Clear all notifications</button>
-        </div>
-      </div>
+            <h2>
+                Skill Development
+            </h2>
+
+            <p>
+                Identify skill gaps and build
+                practical learning roadmaps
+                based on your career goals.
+            </p>
+
+        </article>
+
+
+
+        <article class="card">
+
+            <div class="card-icon">
+                🚀
+            </div>
+
+            <h2>
+                Career Execution
+            </h2>
+
+            <p>
+                Prepare for interviews, improve
+                your resume and understand
+                relevant job-market opportunities.
+            </p>
+
+        </article>
+
+
+    </section>
+
+
+
+    <!-- AI STATUS -->
+
+    <div class="ai-notice">
+
+        <strong>✦ Aura AI is ready.</strong>
+
+        <br>
+
+        The chat interface is powered by the
+        Streamlit application. Your messages are
+        processed server-side through the Aura
+        agent rather than exposing your Groq API
+        key to the browser.
+
     </div>
 
-    <div class="user" id="userMenuBtn" tabindex="0" title="Click to view profile / logout" style="position:relative;">
-      <span class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff" stroke="none"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="#fff" stroke="none"/></svg></span>
-      <span id="uname">User</span>&#9662;
-      <div id="userDropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:200px;background:#06173a;border:1px solid rgba(85,155,255,0.35);border-radius:12px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,0.6);z-index:99999;">
-        <button type="button" onclick="window.navigateTo('home')" style="width:100%;text-align:left;padding:8px 10px;border-radius:8px;background:none;border:none;color:#cfe0ff;cursor:pointer;font-size:0.86rem;display:flex;align-items:center;gap:8px;">⌂ Return to Home</button>
-        <div style="border-top:1px solid rgba(85,155,255,0.2);margin:4px 0;"></div>
-        <button type="button" onclick="window.logout()" style="width:100%;text-align:left;padding:8px 10px;border-radius:8px;background:none;border:none;color:#fca5a5;cursor:pointer;font-size:0.86rem;display:flex;align-items:center;gap:8px;">⏏ Log Out</button>
-      </div>
-    </div>
-  </div>
-</header>
 
-<div class="mobile-drawer-backdrop" id="mobileBackdrop"></div>
-<aside class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
-  <div class="mobile-drawer-head"><b>AuraAI</b><button id="mobileNavClose" aria-label="Close menu">×</button></div>
-  <nav class="mobile-menu">
-    <button class="on"><span>⌂</span>Chat with Aura</button>
-    <button><span>◈</span>Career Roadmap</button>
-    <button><span>◇</span>Skills</button>
-    <button><span>▣</span>Opportunities</button>
-    <button><span>▤</span>Resources</button>
-    <button type="button" onclick="window.openApiKeyModal()" style="color:#7dd3fc; border-color:rgba(14,165,233,0.3); background:rgba(14,165,233,0.1); margin-top:8px;"><span>🔑</span>Connect Live AI</button>
-    <button type="button" onclick="window.navigateTo('home')" style="color:#7db8ff; border-color:rgba(77,140,255,0.3); background:rgba(31,139,255,0.1); margin-top:6px;"><span>⌂</span>Return to Home</button>
-    <button type="button" onclick="window.logout()" style="color:#fca5a5; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.1); margin-top:6px;"><span>⏻</span>Sign Out</button>
-  </nav>
-  <div class="mobile-progress"><b>Your Progress</b><div><span style="width:68%"></span></div><small>68% · Career Growth Journey</small></div>
-</aside>
-
-<div class="app">
-  <aside class="left">
-    <nav class="panel card menu" style="padding:12px">
-      <button class="on"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Chat with Aura</button>
-      <button><svg viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg>Career Roadmap</button>
-      <button><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM7 11v5c0 1.5 2.2 3 5 3s5-1.500 5-3v-5"/></svg>Skills</button>
-      <button><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3M3 13h18"/></svg>Opportunities</button>
-      <button><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Resources</button>
-      <button type="button" onclick="window.navigateTo('home')" style="border-top:1px solid rgba(77,140,255,0.22);margin-top:6px;color:#7db8ff;"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Return to Home</button>
-    </nav>
-    <div class="panel card"><h4>Your Progress</h4>
-      <div class="prog"><div class="ring" style="--p:68"><span>68%</span></div><p>Career Growth Journey</p><svg viewBox="0 0 24 24"><use href="#go"/></svg></div></div>
-    <div class="panel recent"><h4>Recent Chats</h4>
-      <div id="recentChatsList"></div>
-    </div>
-  </aside>
-
-  <main class="panel chat">
-    <div class="c-head"><div><svg class="spark"><use href="#spark"/></svg><span><h2>Chat with Aura</h2><p>Your AI Career Coach</p></span></div><span class="online"><i></i>Aura is online</span></div>
-    <div class="msgs" id="msgs" aria-live="polite">
-      <div class="m"><img src="assets/aura_avatar.jpg" alt="Aura" onerror="this.onerror=null; this.src='aura_avatar.jpg';">
-        <div class="bub"><p>Hello <span class="un">there</span>! I am <b>Aura</b>, your AI Career &amp; Skills Navigator. How can I assist you with your career goals, roadmap, or skills today?</p><time>Just now</time></div></div>
-    </div>
-    <div class="chips" id="chips">
-      <button class="chip">Show me a roadmap</button><button class="chip">Free learning resources</button><button class="chip">Compare AppSec vs GRC</button><button class="chip">Help me with job applications</button>
-    </div>
-    <form class="input" id="form" autocomplete="off">
-      <button type="button" class="clip" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m20 11-8.500 8.500a5 5 0 0 1-7-7L13 4a3.500 3.500 0 0 1 5 5l-8.500 8.500a2 2 0 0 1-3-3L14 7"/></svg></button>
-      <input id="box" placeholder="Type your message to Aura..." aria-label="Message to Aura">
-      <button class="send" aria-label="Send"><svg viewBox="0 0 24 24" style="stroke:#fff"><path d="m21 3-9 18-2-8-8-2zM10 13l11-10"/></svg></button>
-    </form>
-  </main>
-
-  <aside class="right">
-    <div class="panel aura">
-      <svg class="spark"><use href="#spark"/></svg>
-      <div class="pic"><img src="assets/aura_avatar.jpg" alt="Aura" onerror="this.onerror=null; this.src='aura_avatar.jpg';"></div>
-      <h3>Aura <span>AI</span></h3>
-      <p class="role">Your AI Career Coach &amp; Navigator</p>
-      <p class="tag"><u>Smart guidance.</u> Better decisions. A brighter future.</p>
-    </div>
-
-    <div class="panel facts collapsible closed" id="factsPanel">
-      <button type="button" class="panel-header-btn" id="factsToggle" aria-expanded="false" title="Toggle AI Core Architecture">
-        <span class="facts-title">✦ AI Core Architecture</span>
-        <svg class="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="panel-body" id="factsBody">
-        <div class="fact">
-          <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2 2M16.400 16.400l2 2M18.400 5.600l-2 2M7.600 16.400l-2 2"/></svg></span>
-          <div><b>Powered by GPT-OSS-120B</b><small>Advanced reasoning &amp; analysis</small></div>
-        </div>
-        <div class="fact">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5c0-1 3.500-2 8-2s8 1 8 2-3.500 2-8 2-8-1-8-2zM4 5v14c0 1 3.500 2 8 2s8-1 8-2V5M4 12c0 1 3.500 2 8 2s8-1 8-2"/></svg></span>
-          <div><b>RAG Knowledge Base</b><small>Curated career resources</small></div>
-        </div>
-        <div class="fact">
-          <span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.500"/><circle cx="12" cy="17" r="3"/></svg></span>
-          <div><b>4 External Tools</b><small>Search &bull; Wikipedia &bull; API &bull; Calc</small></div>
-        </div>
-        <div class="fact">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zM4 21c0-4 3.500-6 8-6s8 2 8 6"/></svg></span>
-          <div><b>Human-in-the-Loop</b><small>For key career choices</small></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel qa collapsible closed" id="qaPanel">
-      <button type="button" class="panel-header-btn" id="qaToggle" aria-expanded="false" title="Toggle Quick Actions">
-        <h4><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Quick Actions</h4>
-        <svg class="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="panel-body" id="qaBody">
-        <button data-q="Generate my career roadmap"><svg viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/></svg>Generate Career Roadmap<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-        <button data-q="Analyze my skills"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>Analyze My Skills<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-        <button data-q="Explore job opportunities"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg>Explore Job Opportunities<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-        <button data-q="Find free learning resources"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 9h8M8 13h5"/></svg>Find Learning Resources<svg viewBox="0 0 24 24"><use href="#go"/></svg></button>
-      </div>
-    </div>
-
-    <div class="quote">
-      <svg class="spark"><use href="#spark"/></svg>
-      <div>&ldquo;Big dreams need a plan.<br>I'm here to help you build yours.&rdquo;<small>&mdash; Aura AI</small></div>
-    </div>
-  </aside>
 </div>
 
-<script src="static/js/aura_auth.js"></script>
-<script>
-// Check authentication
-const activeUser = (window.AuraAuth && window.AuraAuth.getUser) ? AuraAuth.getUser() : null;
-if (!activeUser || !activeUser.name) {
-  if (typeof window.navigateTo !== 'function') {
-    // Try checking server session in multi-page mode
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(data => {
-        if (data.authenticated && data.user) {
-          AuraAuth.setUser(data.user);
-          window.location.reload();
-        } else {
-          window.location.href = 'signin.html';
-        }
-      })
-      .catch(() => {
-        window.location.href = 'signin.html';
-      });
-  }
-}
-
-const USER = (activeUser && activeUser.name) ? activeUser.name : 'User';
-const unameEl = document.getElementById('uname');
-if (unameEl) unameEl.textContent = USER;
-document.querySelectorAll('.un').forEach(e => e.textContent = USER.split(' ')[0]);
-
-const msgs = document.getElementById('msgs'), box = document.getElementById('box');
-const time = () => new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-function add(role, html) {
-  const d = document.createElement('div');
-  d.className = 'm' + (role === 'me' ? ' me' : '');
-  d.innerHTML = (role === 'me'
-    ? '<div class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff" stroke="none"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="#fff" stroke="none"/></svg></div>'
-    : '<img src="aura_avatar.jpg" alt="Aura">') + '<div class="bub">' + html + '</div>';
-  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d;
-}
-
-// Placeholder replies: replace reply() with a call to your CrewAI/Groq backend
-function reply(q) {
-  const t = q.toLowerCase();
-  if (t.includes('roadmap')) return 'Here is a starting career outline: <b>Phase 1</b> web fundamentals and OWASP Top 10, <b>Phase 2</b> Burp Suite and hands-on labs, <b>Phase 3</b> a portfolio project and a bug bounty or CTF. Which free resources should I attach to each phase?';
-  if (t.includes('grc') || t.includes('compare')) return 'VAPT is hands-on and technical (testing and exploiting systems). GRC is policy, risk and compliance work. Do you prefer building and breaking things, or writing policy and auditing? That decides the better fit.';
-  if (t.includes('free') || t.includes('resource')) return 'Good free starting points: PortSwigger Web Security Academy, OWASP WebGoat and Juice Shop, TryHackMe free rooms. Want me to match them to your current level?';
-  if (t.includes('skill')) return 'To analyze your skills I need to know what you already have. Tell me your top three skills and your target role.';
-  if (t.includes('job') || t.includes('opportunit')) return 'I can look up current openings. Which role and location should I search for?';
-  return 'Thanks for sharing that. Tell me a bit more about your goal and current experience so I can tailor my advice.';
-}
-
-function formatAuraMarkdown(text) {
-  if (!text) return '';
-
-  // Extract code blocks first to protect their contents
-  const codeBlocks = [];
-  text = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-    const idx = codeBlocks.length;
-    codeBlocks.push(
-      '<pre style="background:rgba(3,10,31,0.75);border:1px solid rgba(77,140,255,0.25);padding:10px 14px;border-radius:10px;overflow-x:auto;margin:10px 0;"><code class="language-' + (lang || 'text') + '">' +
-      code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-      '</code></pre>'
-    );
-    return '@@AURA_CODEBLOCK_' + idx + '@@';
-  });
-
-  // Extract inline code
-  text = text.replace(/`([^`\n]+)`/g, (match, code) => {
-    return '<code style="background:rgba(37,140,255,0.18);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.88em;color:#93c5fd;">' +
-      code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-      '</code>';
-  });
-
-  // Split lines that pack multiple inline bullets or numbered points together on a single line
-  text = text.replace(/([^\n])\s+•\s+/g, '$1\n• ');
-  text = text.replace(/([^\n])\s+\*\s+([A-Z0-9])/g, '$1\n* $2');
-  text = text.replace(/([^\n])\s+(\d+\.)\s+/g, '$1\n$2 ');
-
-  const lines = text.split('\n');
-  const out = [];
-  let inUl = false;
-  let inOl = false;
-  let inTable = false;
-  let tableRows = [];
-
-  function closeLists() {
-    let res = '';
-    if (inUl) { res += '</ul>'; inUl = false; }
-    if (inOl) { res += '</ol>'; inOl = false; }
-    return res;
-  }
-
-  function closeTable() {
-    if (!inTable || tableRows.length === 0) {
-      inTable = false;
-      tableRows = [];
-      return '';
-    }
-    let html = '<div class="chat-table-wrap" style="overflow-x:auto;margin:12px 0;border-radius:10px;border:1px solid rgba(77,140,255,0.3);background:rgba(5,16,46,0.75);"><table style="width:100%;border-collapse:collapse;font-size:0.86rem;">';
-    tableRows.forEach((row, rIdx) => {
-      const isHeader = (rIdx === 0);
-      const tag = isHeader ? 'th' : 'td';
-      const cellBg = isHeader ? 'background:rgba(31,139,255,0.25);color:#7dd3fc;font-weight:700;' : 'color:#dbeafe;';
-      html += '<tr>';
-      row.forEach(cell => {
-        let formattedCell = cell.trim();
-        formattedCell = formattedCell.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-        formattedCell = formattedCell.replace(/•\s*/g, '<br>• ');
-        if (formattedCell.startsWith('<br>')) formattedCell = formattedCell.substring(4);
-        html += '<' + tag + ' style="padding:8px 12px;border:1px solid rgba(77,140,255,0.2);vertical-align:top;' + cellBg + '">' + formattedCell + '</' + tag + '>';
-      });
-      html += '</tr>';
-    });
-    html += '</table></div>';
-    inTable = false;
-    tableRows = [];
-    return html;
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    const trimmed = raw.trim();
-
-    // Table check: starts and ends with |
-    if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2) {
-      if (/^\|[\s\-:|]+\|$/.test(trimmed)) {
-        continue;
-      }
-      const listClose = closeLists();
-      if (listClose) out.push(listClose);
-
-      const cells = trimmed.slice(1, -1).split('|');
-      if (!inTable) {
-        inTable = true;
-        tableRows = [];
-      }
-      tableRows.push(cells);
-      continue;
-    } else {
-      if (inTable) {
-        out.push(closeTable());
-      }
-    }
-
-    // Horizontal Rule: --- or ***
-    if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
-      const listClose = closeLists();
-      if (listClose) out.push(listClose);
-      out.push('<hr style="border:0;border-top:1px solid rgba(77,140,255,0.25);margin:12px 0;">');
-      continue;
-    }
-
-    // Blockquote: > text
-    if (trimmed.startsWith('>')) {
-      const listClose = closeLists();
-      if (listClose) out.push(listClose);
-      let qText = trimmed.replace(/^>\s*/, '');
-      qText = qText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      out.push('<blockquote style="border-left:3px solid #38bdf8;padding:6px 12px;margin:8px 0;background:rgba(38,189,248,0.08);border-radius:0 8px 8px 0;color:#cbd5e1;">' + qText + '</blockquote>');
-      continue;
-    }
-
-    // Headings: #, ##, ###, ####, etc.
-    const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
-    if (hMatch) {
-      const listClose = closeLists();
-      if (listClose) out.push(listClose);
-      const level = hMatch[1].length;
-      let hText = hMatch[2].replace(/#+$/, '').trim();
-      hText = hText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      const fontSize = level <= 2 ? '1.14rem' : (level === 3 ? '1.04rem' : '0.96rem');
-      const fontColor = level <= 2 ? '#60a5fa' : (level === 3 ? '#93c5fd' : '#bae6fd');
-      out.push('<h4 style="font-size:' + fontSize + ';color:' + fontColor + ';font-weight:700;margin:14px 0 6px;line-height:1.35;">' + hText + '</h4>');
-      continue;
-    }
-
-    // List items: Bullet (- , * , + , • ) or Numbered (1. , 2. )
-    const listMatch = raw.match(/^(\s*)([-*+•]|\d+[\.)])\s+(.*)$/);
-    if (listMatch) {
-      const isNumbered = /^\d+[\.)]/.test(listMatch[2]);
-      let itemContent = listMatch[3].trim();
-      itemContent = itemContent.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      itemContent = itemContent.replace(/\*(.*?)\*/g, '<i>$1</i>');
-
-      if (isNumbered) {
-        if (inUl) { out.push('</ul>'); inUl = false; }
-        if (!inOl) {
-          out.push('<ol style="margin:8px 0 8px 22px;padding:0;display:flex;flex-direction:column;gap:5px;">');
-          inOl = true;
-        }
-        out.push('<li style="margin:2px 0;line-height:1.6;color:#e2e8f0;">' + itemContent + '</li>');
-      } else {
-        if (inOl) { out.push('</ol>'); inOl = false; }
-        if (!inUl) {
-          out.push('<ul style="margin:8px 0 8px 20px;padding:0;list-style-type:disc;display:flex;flex-direction:column;gap:5px;">');
-          inUl = true;
-        }
-        out.push('<li style="margin:2px 0;line-height:1.6;color:#e2e8f0;">' + itemContent + '</li>');
-      }
-      continue;
-    }
-
-    // Not a list line -> close any open lists
-    const listClose = closeLists();
-    if (listClose) out.push(listClose);
-
-    // Empty line -> spacing
-    if (!trimmed) {
-      out.push('<div style="height:6px;"></div>');
-      continue;
-    }
-
-    // Regular line formatting
-    let lineFormatted = trimmed;
-    lineFormatted = lineFormatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    lineFormatted = lineFormatted.replace(/\*(.*?)\*/g, '<i>$1</i>');
-    out.push('<div class="chat-p" style="margin:5px 0;line-height:1.65;color:#e2e8f0;">' + lineFormatted + '</div>');
-  }
-
-  if (inTable) out.push(closeTable());
-  const listClose = closeLists();
-  if (listClose) out.push(listClose);
-
-  let finalHtml = out.join('');
-
-  // Re-insert code blocks
-  for (let i = 0; i < codeBlocks.length; i++) {
-    finalHtml = finalHtml.replace('@@AURA_CODEBLOCK_' + i + '@@', codeBlocks[i]);
-  }
-
-  return finalHtml;
-}
-
-function getGroqApiKey() {
-  if (window.__GROQ_API_KEY__ && window.__GROQ_API_KEY__.length > 10 && !window.__GROQ_API_KEY__.includes('your_')) {
-    return window.__GROQ_API_KEY__.trim();
-  }
-  const stored = localStorage.getItem('aura_groq_key') || localStorage.getItem('GROQ_API_KEY');
-  if (stored && stored.trim().length > 10 && !stored.trim().includes('your_')) {
-    return stored.trim();
-  }
-  return '';
-}
-
-function updateApiKeyUI() {
-  const dot = document.getElementById('apiKeyDot');
-  const txt = document.getElementById('apiKeyText');
-  const btn = document.getElementById('apiKeyStatusBtn');
-  const key = getGroqApiKey();
-  if (!dot || !txt || !btn) return;
-  if (key) {
-    dot.style.background = '#22c55e';
-    dot.style.boxShadow = '0 0 8px #22c55e';
-    txt.textContent = 'AI Live (Groq)';
-    btn.style.borderColor = 'rgba(34,197,94,0.4)';
-    btn.style.color = '#86efac';
-    btn.style.background = 'rgba(34,197,94,0.12)';
-  } else {
-    dot.style.background = '#f59e0b';
-    dot.style.boxShadow = '0 0 8px #f59e0b';
-    txt.textContent = 'Connect Live AI';
-    btn.style.borderColor = 'rgba(245,158,11,0.4)';
-    btn.style.color = '#fde68a';
-    btn.style.background = 'rgba(245,158,11,0.12)';
-  }
-}
-
-async function send(q, humanApproved = false) {
-  q = q.trim(); if (!q) return;
-  addRecentChat(q);
-  add('me', '<div class="chat-p">' + esc(q).replace(/\n/g, '<br>') + '</div><time>' + time() + ' &#10003;&#10003;</time>');
-  const typing = add('aura', '<div class="typing"><i></i><i></i><i></i></div>');
-  msgs.scrollTop = msgs.scrollHeight;
-
-  try {
-    let replyText = '';
-    let apiError = '';
-    
-    // 1. Try local / backend /api/chat if available
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: q, human_approved: humanApproved })
-    }).catch(() => null);
-
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data && data.reply && !data.needs_key) {
-        replyText = data.reply;
-      }
-    }
-
-    // 2. Direct Groq API call from browser
-    if (!replyText) {
-      const apiKey = getGroqApiKey();
-      if (!apiKey) {
-        const helpNotice = 
-          '✦ **Live Groq AI Engine Setup Required**\n\n' +
-          'Aura is running on a live server, but no active Groq API Key was detected.\n\n' +
-          '• **If deployed on Streamlit Cloud:** Add `GROQ_API_KEY = "gsk_..."` to **App Settings ➔ Secrets**.\n' +
-          '• **Direct Browser Access:** Click **Connect Live AI** below to paste your free Groq API key (saved securely in your browser).\n\n' +
-          '<div style="margin-top:10px;"><button type="button" onclick="window.openApiKeyModal()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:linear-gradient(135deg,#258cff,#0ea5e9);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.86rem;cursor:pointer;box-shadow:0 4px 15px rgba(37,140,255,0.4);">🔑 Connect Groq API Key</button> <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style="font-size:0.84rem;color:#38bdf8;margin-left:10px;text-decoration:none;">Get free key ↗</a></div>';
-        
-        typing.querySelector('.bub').innerHTML = formatAuraMarkdown(helpNotice) + '<time>' + time() + '</time>';
-        msgs.scrollTop = msgs.scrollHeight;
-        return;
-      }
-
-      const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
-      for (const modelName of modelsToTry) {
-        try {
-          const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + apiKey
-            },
-            body: JSON.stringify({
-              model: modelName,
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are Aura, an elite AI Career & Skills Navigator. Provide structured, practical, inspiring advice on career roadmaps, skill gaps, free high-quality learning resources, and job market trends.\n\nFormatting Guidelines:\n- Always place each bullet point (using • or -) and numbered item on its own clean, separate line. Never group or mix multiple points on one line.\n- When presenting tables, use clean standard markdown tables with clear column headers.\n- Use clean headings without excessive raw hashes.'
-                },
-                { role: 'user', content: q }
-              ],
-              temperature: 0.3,
-              max_tokens: 1800
-            })
-          });
-
-          if (groqRes && groqRes.ok) {
-            const groqData = await groqRes.json();
-            replyText = groqData.choices?.[0]?.message?.content || groqData.choices?.[0]?.message?.reasoning || '';
-            if (replyText) break;
-          } else if (groqRes) {
-            const errJson = await groqRes.json().catch(() => ({}));
-            apiError = errJson.error?.message || ('HTTP ' + groqRes.status + ' ' + groqRes.statusText);
-            console.warn('Groq model failed:', modelName, apiError);
-          }
-        } catch (e) {
-          apiError = e.message || String(e);
-          console.warn('Groq model failed:', modelName, e);
-        }
-      }
-    }
-
-    if (!replyText) {
-      if (apiError) {
-        replyText = '⚠️ **Groq API Error on Live Deployment:**\n\n' + apiError + '\n\n' +
-          '• Please verify your API key or quota.\n' +
-          '• Click the button below to update your key.\n\n' +
-          '<button type="button" onclick="window.openApiKeyModal()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:8px;font-weight:600;font-size:0.84rem;cursor:pointer;">🔑 Update Groq API Key</button>';
-      } else {
-        replyText = reply(q);
-      }
-    }
-
-    const formatted = formatAuraMarkdown(replyText);
-    typing.querySelector('.bub').innerHTML = formatted + '<time>' + time() + '</time>';
-  } catch (err) {
-    typing.querySelector('.bub').innerHTML = formatAuraMarkdown(reply(q)) + '<time>' + time() + '</time>';
-  }
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-// --- Dynamic Recent Chats Management ---
-const RECENT_CHATS_KEY = 'aura_recent_chats';
-
-function getRecentChats() {
-  try {
-    const raw = localStorage.getItem(RECENT_CHATS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(item => item && item.query && !item.query.toLowerCase().includes('what skills should i learn'));
-      }
-    }
-  } catch (e) {}
-  return [];
-}
-
-function saveRecentChats(items) {
-  try {
-    localStorage.setItem(RECENT_CHATS_KEY, JSON.stringify(items));
-  } catch (e) {}
-}
-
-function renderRecentChats() {
-  const container = document.getElementById('recentChatsList');
-  if (!container) return;
-  const list = getRecentChats();
-  if (!list || list.length === 0) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;padding:10px 4px;">No recent searches yet. Ask Aura anything above!</p>';
-    return;
-  }
-  container.innerHTML = list.map(item => `
-    <button class="chat-item" data-q="${esc(item.query)}" type="button">
-      <span class="ci"><svg viewBox="0 0 24 24"><use href="#doc"/></svg></span>
-      <span><b>${esc(item.query)}</b><small>${esc(item.time)}</small></span>
-    </button>
-  `).join('');
-
-  container.querySelectorAll('.chat-item').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const q = btn.dataset.q;
-      if (q) send(q);
-    });
-  });
-}
-
-function addRecentChat(query) {
-  if (!query || !query.trim()) return;
-  const cleanQ = query.trim();
-  let list = getRecentChats();
-  list = list.filter(item => item.query.toLowerCase() !== cleanQ.toLowerCase());
-  list.unshift({ query: cleanQ, time: time() });
-  if (list.length > 10) list = list.slice(0, 10);
-  saveRecentChats(list);
-  renderRecentChats();
-}
-
-// --- Collapsible Dropdown Panels ---
-function toggleCollapse(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  const isClosed = panel.classList.toggle('closed');
-  const btn = panel.querySelector('.panel-header-btn');
-  if (btn) btn.setAttribute('aria-expanded', String(!isClosed));
-}
-
-const factsToggle = document.getElementById('factsToggle');
-if (factsToggle) {
-  factsToggle.addEventListener('click', () => toggleCollapse('factsPanel'));
-}
-
-const qaToggle = document.getElementById('qaToggle');
-if (qaToggle) {
-  qaToggle.addEventListener('click', () => toggleCollapse('qaPanel'));
-}
-
-// Initial render of dynamic Recent Chats
-renderRecentChats();
-
-document.getElementById('form').addEventListener('submit', e => { e.preventDefault(); send(box.value); box.value = ''; });
-document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => send(c.textContent)));
-document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => send(b.dataset.q)));
-
-// Sidebar: highlight selected item (pages for the other items come later)
-document.querySelectorAll('.menu button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('.menu button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
-}));
-const mobileDrawer = document.getElementById('mobileDrawer');
-const mobileBackdrop = document.getElementById('mobileBackdrop');
-const mobileToggle = document.getElementById('mobileNavToggle');
-const mobileClose = document.getElementById('mobileNavClose');
-function setMobileDrawer(open){
-  mobileDrawer.classList.toggle('open', open);
-  mobileBackdrop.classList.toggle('open', open);
-  mobileDrawer.setAttribute('aria-hidden', String(!open));
-  mobileToggle.setAttribute('aria-expanded', String(open));
-}
-mobileToggle.addEventListener('click', () => setMobileDrawer(true));
-mobileClose.addEventListener('click', () => setMobileDrawer(false));
-mobileBackdrop.addEventListener('click', () => setMobileDrawer(false));
-document.querySelectorAll('.mobile-menu button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('.mobile-menu button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
-  setMobileDrawer(false);
-}));
-
-// --- Notifications Dropdown Handling ---
-const bellBtn = document.getElementById('bellBtn');
-const notifDropdown = document.getElementById('notifDropdown');
-const bellBadge = document.getElementById('bellBadge');
-const notifMarkAll = document.getElementById('notifMarkAll');
-const notifClearAll = document.getElementById('notifClearAll');
-const notifCount = document.getElementById('notifCount');
-const notifList = document.getElementById('notifList');
-
-if (bellBtn && notifDropdown) {
-  bellBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const userDropdown = document.getElementById('dashUserDropdown');
-    if (userDropdown) userDropdown.style.display = 'none';
-
-    const isOpen = notifDropdown.style.display === 'block';
-    notifDropdown.style.display = isOpen ? 'none' : 'block';
-    if (!isOpen && bellBadge) {
-      bellBadge.classList.add('hidden');
-    }
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#bellWrapper')) {
-      notifDropdown.style.display = 'none';
-    }
-  });
-
-  if (notifMarkAll) {
-    notifMarkAll.addEventListener('click', (e) => {
-      e.stopPropagation();
-      document.querySelectorAll('.notif-item.unread').forEach(item => {
-        item.classList.remove('unread');
-      });
-      if (notifCount) notifCount.textContent = '0 New';
-      if (bellBadge) bellBadge.classList.add('hidden');
-    });
-  }
-
-  if (notifClearAll) {
-    notifClearAll.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (notifList) {
-        notifList.innerHTML = `
-          <div style="padding:28px 16px; text-align:center; color:#9eb5dc; font-size:0.84rem;">
-            <div style="font-size:1.6rem; margin-bottom:8px;">✦</div>
-            <b style="color:#fff; display:block; margin-bottom:4px;">All caught up!</b>
-            <span>You have no new notifications right now.</span>
-          </div>
-        `;
-      }
-      if (notifCount) notifCount.textContent = '0';
-      if (bellBadge) bellBadge.classList.add('hidden');
-    });
-  }
-}
-
-const userMenuBtn = document.getElementById('userMenuBtn');
-const userDropdown = document.getElementById('userDropdown');
-if (userMenuBtn && userDropdown) {
-  userMenuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userDropdown.style.display = userDropdown.style.display === 'block' ? 'none' : 'block';
-  });
-  document.addEventListener('click', () => {
-    userDropdown.style.display = 'none';
-  });
-}
-
-msgs.scrollTop = 0;
-
-// --- API Key Modal & Controller Logic ---
-window.openApiKeyModal = function() {
-  const modal = document.getElementById('apiKeyModal');
-  const input = document.getElementById('groqKeyInput');
-  const msg = document.getElementById('apiKeyValidationMsg');
-  if (modal) modal.style.display = 'flex';
-  if (input) {
-    input.value = getGroqApiKey();
-    input.focus();
-  }
-  if (msg) {
-    msg.style.color = '#94a3b8';
-    msg.textContent = "Stored securely in your browser's localStorage.";
-  }
-};
-
-window.closeApiKeyModal = function() {
-  const modal = document.getElementById('apiKeyModal');
-  if (modal) modal.style.display = 'none';
-};
-
-window.testApiKeyConnection = async function() {
-  const input = document.getElementById('groqKeyInput');
-  const msg = document.getElementById('apiKeyValidationMsg');
-  const key = (input ? input.value : '').trim();
-  if (!key || key.length < 10) {
-    if (msg) {
-      msg.style.color = '#f87171';
-      msg.textContent = 'Please enter a valid Groq API key (starts with gsk_).';
-    }
-    return;
-  }
-  if (msg) {
-    msg.style.color = '#38bdf8';
-    msg.textContent = 'Testing connection with Groq API...';
-  }
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key
-      },
-      body: JSON.stringify({
-        model: 'qwen/qwen3.8-27b',
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5
-      })
-    });
-    if (res.ok) {
-      if (msg) {
-        msg.style.color = '#4ade80';
-        msg.textContent = '✓ Connected successfully! Click Save & Activate.';
-      }
-    } else {
-      const err = await res.json().catch(() => ({}));
-      if (msg) {
-        msg.style.color = '#f87171';
-        msg.textContent = '✗ ' + (err.error?.message || ('HTTP ' + res.status));
-      }
-    }
-  } catch (e) {
-    if (msg) {
-      msg.style.color = '#f87171';
-      msg.textContent = '✗ Connection error: ' + e.message;
-    }
-  }
-};
-
-window.saveApiKey = function() {
-  const input = document.getElementById('groqKeyInput');
-  const key = (input ? input.value : '').trim();
-  if (key) {
-    localStorage.setItem('aura_groq_key', key);
-    window.__GROQ_API_KEY__ = key;
-  } else {
-    localStorage.removeItem('aura_groq_key');
-    window.__GROQ_API_KEY__ = '';
-  }
-  updateApiKeyUI();
-  window.closeApiKeyModal();
-};
-
-document.addEventListener('click', function(e) {
-  const modal = document.getElementById('apiKeyModal');
-  if (modal && e.target === modal) {
-    window.closeApiKeyModal();
-  }
-});
-
-// Update API key status badge on page load
-updateApiKeyUI();
-</script>
-
-<!-- Live API Key Configuration Modal -->
-<div id="apiKeyModal" style="display:none;position:fixed;inset:0;background:rgba(3,10,31,0.85);backdrop-filter:blur(8px);z-index:999999;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#07163a;border:1px solid rgba(85,155,255,0.4);border-radius:18px;max-width:480px;width:100%;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.8);color:#e2e8f0;position:relative;">
-    <button type="button" onclick="window.closeApiKeyModal()" style="position:absolute;top:18px;right:18px;background:none;border:none;color:#94a3b8;font-size:1.5rem;cursor:pointer;line-height:1;">×</button>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-      <span style="font-size:1.4rem;background:rgba(37,140,255,0.2);padding:8px 12px;border-radius:12px;color:#38bdf8;">🔑</span>
-      <div>
-        <h3 style="margin:0;font-size:1.15rem;color:#fff;font-weight:700;">Connect Live Groq AI</h3>
-        <p style="margin:3px 0 0;font-size:0.8rem;color:#94a3b8;">Enable live, real-time AI reasoning on this deployment</p>
-      </div>
-    </div>
-    <div style="margin:18px 0;">
-      <label style="display:block;font-size:0.84rem;font-weight:600;color:#cbd5e1;margin-bottom:6px;">Groq API Key</label>
-      <input type="password" id="groqKeyInput" placeholder="gsk_..." style="width:100%;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(85,155,255,0.35);color:#fff;font-size:0.92rem;outline:none;box-sizing:border-box;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-        <span id="apiKeyValidationMsg" style="font-size:0.8rem;color:#94a3b8;">Stored securely in your browser's localStorage.</span>
-        <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem;color:#38bdf8;text-decoration:none;">Get free API key ↗</a>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">
-      <button type="button" id="btnTestApiKey" onclick="window.testApiKeyConnection()" style="padding:9px 15px;border-radius:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;cursor:pointer;font-size:0.86rem;font-weight:500;">Test Connection</button>
-      <button type="button" onclick="window.saveApiKey()" style="padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#258cff,#0ea5e9);border:none;color:#fff;cursor:pointer;font-size:0.86rem;font-weight:600;box-shadow:0 4px 15px rgba(37,140,255,0.4);">Save &amp; Activate</button>
-    </div>
-  </div>
-</div>
 </body>
+
 </html>

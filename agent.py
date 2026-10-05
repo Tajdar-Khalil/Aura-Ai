@@ -37,7 +37,7 @@ def _get_api_key() -> str:
             ]:
                 if name in st.secrets:
                     val = str(st.secrets[name]).strip()
-                    if val.startswith("gsk_") or ("GROQ" in name and len(val) > 15):
+                    if (val.startswith("gsk_") or ("GROQ" in name and len(val) > 15)) and "your_" not in val.lower():
                         return val
 
             for sec_name in ["GROQ", "groq", "firebase", "FIREBASE"]:
@@ -45,7 +45,7 @@ def _get_api_key() -> str:
                     sec = st.secrets[sec_name]
                     for field in ["api_key", "apiKey", "GROQ_API_KEY", "key"]:
                         val = str(getattr(sec, "get", lambda f, d="": d)(field, "")).strip()
-                        if val.startswith("gsk_") or (sec_name.lower() == "groq" and len(val) > 15):
+                        if (val.startswith("gsk_") or (sec_name.lower() == "groq" and len(val) > 15)) and "your_" not in val.lower():
                             return val
 
             def scan_obj(obj):

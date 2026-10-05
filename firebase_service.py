@@ -90,14 +90,32 @@ def _init_admin() -> bool:
             cred = credentials.Certificate(str(json_path))
             firebase_admin.initialize_app(cred)
             return True
-        elif hasattr(st, "secrets") and ("firebase" in st.secrets or "firebase_service_account" in st.secrets):
-            raw_sa = st.secrets["firebase"] if "firebase" in st.secrets else st.secrets["firebase_service_account"]
-            sa = dict(raw_sa)
-            if "private_key" in sa and isinstance(sa["private_key"], str):
-                sa["private_key"] = sa["private_key"].replace("\\n", "\n")
-            cred = credentials.Certificate(sa)
-            firebase_admin.initialize_app(cred)
-            return True
+        elif hasattr(st, "secrets"):
+            sa = None
+            if "firebase" in st.secrets or "firebase_service_account" in st.secrets:
+                raw_sa = st.secrets["firebase"] if "firebase" in st.secrets else st.secrets["firebase_service_account"]
+                sa = dict(raw_sa)
+            elif "project_id" in st.secrets and "private_key" in st.secrets:
+                sa = {
+                    "type": str(st.secrets.get("type", "service_account")),
+                    "project_id": str(st.secrets.get("project_id", "")),
+                    "private_key_id": str(st.secrets.get("private_key_id", "")),
+                    "private_key": str(st.secrets.get("private_key", "")),
+                    "client_email": str(st.secrets.get("client_email", "")),
+                    "client_id": str(st.secrets.get("client_id", "")),
+                    "auth_uri": str(st.secrets.get("auth_uri", "https://accounts.google.com/o/oauth2/auth")),
+                    "token_uri": str(st.secrets.get("token_uri", "https://oauth2.googleapis.com/token")),
+                    "auth_provider_x509_cert_url": str(st.secrets.get("auth_provider_x509_cert_url", "https://www.googleapis.com/oauth2/v1/certs")),
+                    "client_x509_cert_url": str(st.secrets.get("client_x509_cert_url", "")),
+                    "universe_domain": str(st.secrets.get("universe_domain", "googleapis.com")),
+                }
+
+            if sa:
+                if "private_key" in sa and isinstance(sa["private_key"], str):
+                    sa["private_key"] = sa["private_key"].replace("\\n", "\n")
+                cred = credentials.Certificate(sa)
+                firebase_admin.initialize_app(cred)
+                return True
     except Exception:
         return False
     return False

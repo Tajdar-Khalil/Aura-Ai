@@ -20,7 +20,7 @@ except ImportError:
 # Firebase Web Configuration (public — safe to expose)
 # -----------------------------------------------------------------
 firebase_config = {
-    "apiKey": "",
+    "apiKey": "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",
     "authDomain": "aura-c07ad.firebaseapp.com",
     "projectId": "aura-c07ad",
     "storageBucket": "aura-c07ad.firebasestorage.app",

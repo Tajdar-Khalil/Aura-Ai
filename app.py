@@ -53,20 +53,68 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Retrieve GROQ_API_KEY
-groq_key = os.getenv("GROQ_API_KEY", "").strip()
-if not groq_key or "your_" in groq_key.lower():
+# 3. Retrieve GROQ_API_KEY universally from environment or Streamlit Secrets
+def _find_groq_api_key() -> str:
+    # 1. Direct environment variable
+    k = os.getenv("GROQ_API_KEY", "").strip()
+    if k and k.startswith("gsk_"):
+        return k
+
+    if not hasattr(st, "secrets"):
+        return k or ""
+
     try:
-        if hasattr(st, "secrets"):
-            if "GROQ_API_KEY" in st.secrets:
-                groq_key = str(st.secrets["GROQ_API_KEY"]).strip()
-            elif "groq_api_key" in st.secrets:
-                groq_key = str(st.secrets["groq_api_key"]).strip()
-            elif "GROQ" in st.secrets:
-                g_sec = st.secrets["GROQ"]
-                groq_key = str(getattr(g_sec, "get", lambda k, d="": d)("api_key", "")).strip()
+        # Check standard key names
+        for name in [
+            "GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key",
+            "apiKey", "api_key", "API_KEY", "FIREBASE_API_KEY", "firebase_api_key"
+        ]:
+            if name in st.secrets:
+                val = str(st.secrets[name]).strip()
+                if val.startswith("gsk_") or ("GROQ" in name and len(val) > 15):
+                    return val
+
+        # Check nested sections like [GROQ], [firebase], [groq]
+        for sec_name in ["GROQ", "groq", "firebase", "FIREBASE"]:
+            if sec_name in st.secrets:
+                sec = st.secrets[sec_name]
+                for field in ["api_key", "apiKey", "GROQ_API_KEY", "key"]:
+                    val = str(getattr(sec, "get", lambda f, d="": d)(field, "")).strip()
+                    if val.startswith("gsk_") or (sec_name.lower() == "groq" and len(val) > 15):
+                        return val
+
+        # Deep scan: scan ALL secrets for any value starting with "gsk_"
+        def scan_obj(obj):
+            if isinstance(obj, str) and obj.strip().startswith("gsk_"):
+                return obj.strip()
+            if hasattr(obj, "items"):
+                for _, v in obj.items():
+                    res = scan_obj(v)
+                    if res:
+                        return res
+            elif isinstance(obj, (list, tuple)):
+                for item in obj:
+                    res = scan_obj(item)
+                    if res:
+                        return res
+            return None
+
+        found = scan_obj(st.secrets)
+        if found:
+            return found
+
+        # If any generic apiKey exists and starts with gsk_ or is long enough
+        for name in ["apiKey", "api_key", "API_KEY"]:
+            if name in st.secrets:
+                val = str(st.secrets[name]).strip()
+                if len(val) > 20:
+                    return val
     except Exception:
         pass
+
+    return k or ""
+
+groq_key = _find_groq_api_key()
 
 
 def get_unified_html(api_key: str) -> str:

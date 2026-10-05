@@ -18,9 +18,39 @@ except ImportError:
 
 # -----------------------------------------------------------------
 # Firebase Web Configuration (public — safe to expose)
-# -----------------------------------------------------------------
+def _resolve_firebase_api_key() -> str:
+    # 1. Check Streamlit secrets
+    try:
+        if hasattr(st, "secrets"):
+            for k in ["FIREBASE_API_KEY", "firebase_api_key", "FIREBASE_WEB_API_KEY"]:
+                if k in st.secrets:
+                    val = str(st.secrets[k]).strip()
+                    if val and not val.startswith("gsk_"):
+                        return val
+            if "firebase" in st.secrets:
+                fb = st.secrets["firebase"]
+                val = str(getattr(fb, "get", lambda k, d="": d)("apiKey", "") or getattr(fb, "get", lambda k, d="": d)("api_key", "")).strip()
+                if val and not val.startswith("gsk_"):
+                    return val
+            for k in ["apiKey", "api_key"]:
+                if k in st.secrets:
+                    val = str(st.secrets[k]).strip()
+                    if val and not val.startswith("gsk_"):
+                        return val
+    except Exception:
+        pass
+
+    # 2. Check environment variables
+    import os
+    env_k = os.getenv("FIREBASE_API_KEY", "").strip() or os.getenv("FIREBASE_WEB_API_KEY", "").strip()
+    if env_k and not env_k.startswith("gsk_"):
+        return env_k
+
+    # 3. Default Firebase Web Public API Key (safe client identifier)
+    return "AIzaSyDOv6h1H6gbYn8RyYImq-m5OTjvLu9Edc4"
+
 firebase_config = {
-    "apiKey": "",
+    "apiKey": _resolve_firebase_api_key(),
     "authDomain": "aura-c07ad.firebaseapp.com",
     "projectId": "aura-c07ad",
     "storageBucket": "aura-c07ad.firebasestorage.app",

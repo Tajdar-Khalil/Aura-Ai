@@ -24,15 +24,52 @@ MODEL = os.getenv("GROQ_MODEL", "groq/openai/gpt-oss-120b")
 
 
 def _get_api_key() -> str:
-    api_key = os.getenv("GROQ_API_KEY", "").strip()
-    if not api_key:
-        try:
-            import streamlit as st
-            if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-                api_key = str(st.secrets["GROQ_API_KEY"]).strip()
-        except Exception:
-            pass
-    return api_key
+    k = os.getenv("GROQ_API_KEY", "").strip()
+    if k and k.startswith("gsk_"):
+        return k
+
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            for name in [
+                "GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key",
+                "apiKey", "api_key", "API_KEY", "FIREBASE_API_KEY", "firebase_api_key"
+            ]:
+                if name in st.secrets:
+                    val = str(st.secrets[name]).strip()
+                    if val.startswith("gsk_") or ("GROQ" in name and len(val) > 15):
+                        return val
+
+            for sec_name in ["GROQ", "groq", "firebase", "FIREBASE"]:
+                if sec_name in st.secrets:
+                    sec = st.secrets[sec_name]
+                    for field in ["api_key", "apiKey", "GROQ_API_KEY", "key"]:
+                        val = str(getattr(sec, "get", lambda f, d="": d)(field, "")).strip()
+                        if val.startswith("gsk_") or (sec_name.lower() == "groq" and len(val) > 15):
+                            return val
+
+            def scan_obj(obj):
+                if isinstance(obj, str) and obj.strip().startswith("gsk_"):
+                    return obj.strip()
+                if hasattr(obj, "items"):
+                    for _, v in obj.items():
+                        res = scan_obj(v)
+                        if res:
+                            return res
+                elif isinstance(obj, (list, tuple)):
+                    for item in obj:
+                        res = scan_obj(item)
+                        if res:
+                            return res
+                return None
+
+            found = scan_obj(st.secrets)
+            if found:
+                return found
+    except Exception:
+        pass
+
+    return k or ""
 
 
 def _build_llm():
